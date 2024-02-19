@@ -16,12 +16,9 @@ import org.jetbrains.kotlin.backend.wasm.lower.JsInteropFunctionsLowering
 import org.jetbrains.kotlin.backend.wasm.lower.markExportedDeclarations
 import org.jetbrains.kotlin.backend.wasm.utils.SourceMapGenerator
 import org.jetbrains.kotlin.backend.wasm.export.ExportModelGenerator
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.ir.backend.js.MainModule
 import org.jetbrains.kotlin.ir.backend.js.ModulesStructure
-import org.jetbrains.kotlin.ir.backend.js.SourceMapsInfo
 import org.jetbrains.kotlin.ir.backend.js.export.ExportModelToTsDeclarations
-import org.jetbrains.kotlin.ir.backend.js.export.ExportedModule
 import org.jetbrains.kotlin.ir.backend.js.export.TypeScriptFragment
 import org.jetbrains.kotlin.ir.backend.js.loadIr
 import org.jetbrains.kotlin.ir.declarations.IrFactory
@@ -29,20 +26,14 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.patchDeclarationParents
 import org.jetbrains.kotlin.js.config.JSConfigurationKeys
-import org.jetbrains.kotlin.js.config.WasmTarget
-import org.jetbrains.kotlin.js.sourceMap.SourceFilePathResolver
-import org.jetbrains.kotlin.js.sourceMap.SourceMap3Builder
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.serialization.js.ModuleKind
 import org.jetbrains.kotlin.utils.addToStdlib.runIf
 import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
 import org.jetbrains.kotlin.wasm.ir.convertors.WasmIrToBinary
 import org.jetbrains.kotlin.wasm.ir.convertors.WasmIrToText
-import org.jetbrains.kotlin.wasm.ir.source.location.SourceLocation
-import org.jetbrains.kotlin.wasm.ir.source.location.SourceLocationMapping
 import java.io.ByteArrayOutputStream
 import java.io.File
-import kotlin.math.exp
 
 class WasmCompilerResult(
     val wat: String?,
@@ -263,19 +254,20 @@ fun WasmCompiledModuleFragment.generateAsyncJsWrapper(
             }
         }.sorted()
         .joinToString("\n")
-
+    //TODO: Rename tryGetOrSetExternrefBox to getCachedJsObject after bootstrap (KT-65322)
     //language=js
     return """
 export async function instantiate(imports={}, runInitializer=true) {
-    const externrefBoxes = new WeakMap();
+    const cachedJsObjects = new WeakMap();
     // ref must be non-null
     function tryGetOrSetExternrefBox(ref, ifNotCached) {
-        if (typeof ref !== 'object') return ifNotCached;
-        const cachedBox = externrefBoxes.get(ref);
-        if (cachedBox !== void 0) return cachedBox;
-        externrefBoxes.set(ref, ifNotCached);
+        if (typeof ref !== 'object' && typeof ref !== 'function') return ifNotCached;
+        const cached = cachedJsObjects.get(ref);
+        if (cached !== void 0) return cached;
+        cachedJsObjects.set(ref, ifNotCached);
         return ifNotCached;
     }
+    const getCachedJsObject = tryGetOrSetExternrefBox;
 
 $referencesToQualifiedAndImportedDeclarations
     
