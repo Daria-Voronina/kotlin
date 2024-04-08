@@ -14,6 +14,7 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.*
 import org.gradle.work.DisableCachingByDefault
+import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.gradle.utils.listFilesOrEmpty
 import org.jetbrains.kotlin.gradle.utils.mapToFile
 import org.jetbrains.kotlin.gradle.utils.runCommand
@@ -50,23 +51,32 @@ internal abstract class BuildSPMSwiftExportPackage : DefaultTask() {
     val platformName: Provider<String>
         get() = providerFactory.environmentVariable("PLATFORM_NAME")
 
-    @get:OutputDirectory
-    val syntheticInterfacesPath: Provider<Directory>
-        get() = syntheticProjectDirectory.map { it.dir("dd-interfaces") }
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val workingDir: DirectoryProperty
 
-    private val syntheticObjectFilesDirectory
-        get() = syntheticProjectDirectory.map { it.dir("dd-o-files") }
+    @get:OutputDirectory
+    val interfacesPath: Provider<Directory>
+        get() = packageBuildDirectory.map { it.dir("dd-interfaces") }
+
+    @get:OutputDirectory
+    val objectFilesPath: Provider<Directory>
+        get() = packageBuildDirectory.map { it.dir("dd-o-files") }
+
+    @get:OutputDirectory
+    val buildIntermediatesPath: Provider<Directory>
+        get() = packageBuildDirectory.map { it.dir("dd-other") }
 
     @get:OutputFile
-    val syntheticLibraryPath: Provider<RegularFile>
-        get() = syntheticObjectFilesDirectory.map { it.file("lib${swiftLibraryName.get()}.a") }
+    val packageLibraryPath: Provider<RegularFile>
+        get() = objectFilesPath.map { it.file("lib${swiftLibraryName.get()}.a") }
 
     @get:OutputDirectory
-    val syntheticBuildIntermediatesPath: Provider<File>
-        get() = syntheticProjectDirectory.map { it.dir("dd-other") }.mapToFile()
+    val swiftModulePath: Provider<Directory>
+        get() = interfacesPath.map { it.dir("${swiftApiModuleName.get()}.swiftmodule") }
 
     @get:Internal
-    abstract val syntheticProjectDirectory: DirectoryProperty
+    abstract val packageBuildDirectory: DirectoryProperty
 
     @TaskAction
     fun run() {
@@ -75,34 +85,30 @@ internal abstract class BuildSPMSwiftExportPackage : DefaultTask() {
     }
 
     private fun buildSyntheticProject(): File {
-        val syntheticObjectFilesDirectory = this.syntheticObjectFilesDirectory.get().asFile
+        val objectFiles = objectFilesPath.getFile()
         val intermediatesDestination = mapOf(
             // Thin/universal object files
-            "TARGET_BUILD_DIR" to syntheticObjectFilesDirectory.canonicalPath,
+            "TARGET_BUILD_DIR" to objectFiles.canonicalPath,
             // .swiftmodule interface
-            "BUILT_PRODUCTS_DIR" to syntheticInterfacesPath.get().asFile.canonicalPath,
+            "BUILT_PRODUCTS_DIR" to interfacesPath.get().asFile.canonicalPath,
         )
         val inheritedBuildSettings = inheritedBuildSettingsFromEnvironment.mapValues {
             it.value.get()
         }
 
-        val workingDir = syntheticProjectDirectory.flatMap {
-            it.dir(swiftApiModuleName)
-        }.mapToFile()
-
         // FIXME: This will not work with dynamic libraries
         runCommand(
             listOf(
                 "xcodebuild",
-                "-derivedDataPath", syntheticBuildIntermediatesPath.get().canonicalPath,
+                "-derivedDataPath", buildIntermediatesPath.getFile().canonicalPath,
                 "-scheme", swiftApiModuleName.get(),
                 "-destination", destination(),
             ) + (inheritedBuildSettings + intermediatesDestination).map { (k, v) -> "$k=$v" },
             processConfiguration = {
-                directory(workingDir.get())
+                directory(workingDir.getFile())
             }
         )
-        return syntheticObjectFilesDirectory
+        return objectFiles
     }
 
     private fun packObjectFilesIntoLibrary(syntheticObjectFilesDirectory: File) {
@@ -116,7 +122,7 @@ internal abstract class BuildSPMSwiftExportPackage : DefaultTask() {
         runCommand(
             listOf(
                 "libtool", "-static",
-                "-o", syntheticLibraryPath.get().asFile.canonicalPath,
+                "-o", packageLibraryPath.get().asFile.canonicalPath,
             ) + objectFilePaths,
         )
     }
