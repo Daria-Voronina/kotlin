@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
+package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
@@ -14,6 +14,7 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.*
 import org.gradle.work.DisableCachingByDefault
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
 import java.io.File
 import javax.inject.Inject
 
@@ -24,10 +25,6 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
     providerFactory: ProviderFactory,
     private val fileSystem: FileSystemOperations
 ) : DefaultTask() {
-    companion object {
-        private const val KOTLIN_RUNTIME = "KotlinRuntime"
-        private const val KOTLIN_BRIDGE = "KotlinBridge"
-    }
 
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -61,7 +58,7 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
     val syntheticInterfacesDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
         builtProductsDirectory.flatMap {
             projectLayout.dir(providerFactory.provider {
-                it.asFile.resolve(KOTLIN_BRIDGE)
+                it.asFile.resolve(SwiftExportConstants.KOTLIN_BRIDGE)
             })
         }
     )
@@ -70,7 +67,7 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
     val kotlinRuntimeDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
         builtProductsDirectory.flatMap {
             projectLayout.dir(providerFactory.provider {
-                it.asFile.resolve(KOTLIN_RUNTIME)
+                it.asFile.resolve(SwiftExportConstants.KOTLIN_RUNTIME)
             })
         }
     )

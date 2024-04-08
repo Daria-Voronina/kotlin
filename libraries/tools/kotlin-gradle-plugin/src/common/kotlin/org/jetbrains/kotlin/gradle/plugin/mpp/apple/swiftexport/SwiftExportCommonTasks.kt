@@ -7,6 +7,7 @@ package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
 
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.file.Directory
 import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.provider.Provider
@@ -14,37 +15,32 @@ import org.gradle.api.tasks.TaskProvider
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformSourceSetConventionsImpl.commonMain
 import org.jetbrains.kotlin.gradle.dsl.KotlinNativeBinaryContainer
 import org.jetbrains.kotlin.gradle.dsl.multiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.*
-import org.jetbrains.kotlin.gradle.plugin.mpp.*
+import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
+import org.jetbrains.kotlin.gradle.plugin.mpp.AbstractNativeLibrary
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeCompilation
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.maybeCreateSwiftExportClasspathResolvableConfiguration
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.BuildSPMSwiftExportPackage
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.GenerateSPMPackageFromSwiftExport
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.SwiftExportTask
 import org.jetbrains.kotlin.gradle.tasks.dependsOn
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
 import org.jetbrains.kotlin.gradle.utils.*
-import org.jetbrains.kotlin.gradle.utils.future
-import org.jetbrains.kotlin.gradle.utils.getOrCreate
-import org.jetbrains.kotlin.gradle.utils.konanDistribution
-import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
-import org.jetbrains.kotlin.gradle.utils.mapToFile
 import org.jetbrains.kotlin.konan.target.Distribution
 
-fun Project.registerSwiftExportTask(
-    framework: Framework,
-): TaskProvider<*> {
-    return registerSwiftExportTask(
-        swiftApiModuleName = framework.baseNameProvider,
-        target = framework.target,
-        buildType = framework.buildType,
-    )
-}
-
-private fun Project.registerSwiftExportTask(
+internal fun Project.setupCommonSwiftExportPipeline(
     swiftApiModuleName: Provider<String>,
+    taskNamePrefix: String,
     target: KotlinNativeTarget,
     buildType: NativeBuildType,
-): TaskProvider<*> {
-    val taskNamePrefix = lowerCamelCaseName(
-        target.disambiguationClassifier ?: target.name,
-        buildType.getName(),
-    )
+    configuration: (
+        packageBuild: TaskProvider<BuildSPMSwiftExportPackage>,
+        packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
+        staticLibrary: AbstractNativeLibrary
+    ) -> TaskProvider<out Task>,
+): TaskProvider<out Task> {
     val mainCompilation = target.compilations.getByName("main")
 
     val swiftExportTask = registerSwiftExportRun(
@@ -80,12 +76,7 @@ private fun Project.registerSwiftExportTask(
         packageGenerationTask = packageGenerationTask,
     )
 
-    return registerCopyTask(
-        taskNamePrefix = taskNamePrefix,
-        staticLibrary = staticLibrary,
-        packageGenerationTask = packageGenerationTask,
-        packageBuildTask = packageBuild
-    )
+    return configuration(packageBuild, packageGenerationTask, staticLibrary)
 }
 
 private fun Project.registerSwiftExportRun(
@@ -119,9 +110,9 @@ private fun Project.registerSwiftExportRun(
         task.parameters.konanDistribution.set(Distribution(konanDistribution.root.absolutePath))
 
         // Output
-        task.parameters.swiftApiPath.set(swiftIntermediates.map { it.file("KotlinAPI.swift") })
-        task.parameters.headerBridgePath.set(swiftIntermediates.map { it.file("KotlinBridge.h") })
-        task.parameters.kotlinBridgePath.set(kotlinIntermediates.map { it.file("KotlinBridge.kt") })
+        task.parameters.swiftApiPath.set(swiftIntermediates.map { it.file(SwiftExportConstants.KOTLIN_API_SWIFT) })
+        task.parameters.headerBridgePath.set(swiftIntermediates.map { it.file(SwiftExportConstants.KOTLIN_BRIDGE_H) })
+        task.parameters.kotlinBridgePath.set(kotlinIntermediates.map { it.file(SwiftExportConstants.KOTLIN_BRIDGE_KT) })
     }
 }
 
@@ -216,24 +207,3 @@ private fun Project.registerSPMPackageBuild(
     packageBuild.dependsOn(packageGenerationTask)
     return packageBuild
 }
-
-private fun Project.registerCopyTask(
-    taskNamePrefix: String,
-    staticLibrary: AbstractNativeLibrary,
-    packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
-    packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
-): TaskProvider<*> {
-    val copyTaskName = taskNamePrefix + "CopySPMIntermediates"
-    val copyTask = locateOrRegisterTask<CopySwiftExportIntermediatesForConsumer>(copyTaskName) { task ->
-        task.group = BasePlugin.BUILD_GROUP
-        task.description = "Copy $taskNamePrefix SPM intermediates"
-        task.includeBridgeDirectory.set(layout.file(packageGenerationTask.map { it.headerBridgeIncludePath }))
-        task.includeKotlinRuntimeDirectory.set(layout.file(packageGenerationTask.map { it.kotlinRuntimeIncludePath }))
-        task.kotlinLibraryPath.set(layout.file(staticLibrary.linkTaskProvider.flatMap { it.outputFile }))
-        task.packageLibraryPath.set(layout.file(packageBuildTask.flatMap { it.packageLibraryPath.mapToFile() }))
-        task.packageInterfacesPath.set(layout.file(packageBuildTask.flatMap { it.interfacesPath.mapToFile() }))
-    }
-    copyTask.dependsOn(packageBuildTask)
-    return copyTask
-}
-

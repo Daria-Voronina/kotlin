@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.gradle.plugin.mpp.apple
+package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.*
@@ -15,7 +15,6 @@ import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.gradle.utils.relativeOrAbsolute
 import org.jetbrains.kotlin.gradle.utils.runCommand
-import org.jetbrains.kotlin.incremental.deleteRecursivelyOrThrow
 import org.jetbrains.kotlin.konan.target.HostManager
 import java.io.File
 import java.io.Serializable
@@ -24,7 +23,7 @@ import javax.inject.Inject
 internal data class ModuleDefinition(val name: String, val header: File) : Serializable
 
 @DisableCachingByDefault
-internal abstract class FrameworkTask @Inject constructor(
+internal abstract class SwiftExportFrameworkTask @Inject constructor(
     private val fileSystem: FileSystemOperations,
 ) : DefaultTask() {
     init {
@@ -73,20 +72,6 @@ internal abstract class FrameworkTask @Inject constructor(
 
     @TaskAction
     fun assembleFramework() {
-        frameworkPath.getFile().apply {
-            if (exists()) {
-                deleteRecursivelyOrThrow()
-            }
-        }
-
-        libraries.asFileTree.forEach {
-            val exists = it.exists()
-            println("File: ${it.canonicalPath} exists: $exists")
-        }
-
-        println("Working dir: ${workingDir.getFile()}")
-        println("Swift module: ${swiftModule.getFile()}")
-
         assembleBinary()
         prepareHeaders()
         createXCFramework()

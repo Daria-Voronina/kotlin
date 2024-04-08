@@ -21,7 +21,7 @@ import org.jetbrains.kotlin.gradle.plugin.diagnostics.reportDiagnostic
 import org.jetbrains.kotlin.gradle.plugin.mpp.Framework
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.FrameworkCopy.Companion.dsymFile
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.registerSwiftExportTask
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.registerSwiftExportEmbedTask
 import org.jetbrains.kotlin.gradle.plugin.mpp.enabledOnCurrentHostForBinariesCompilation
 import org.jetbrains.kotlin.gradle.tasks.*
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
@@ -221,7 +221,7 @@ internal fun Project.registerEmbedAndSignAppleFrameworkTask(framework: Framework
 
     val swiftExportTask: TaskProvider<*>? =
         if (project.kotlinPropertiesProvider.swiftExportEnabled && XcodeEnvironment.targets.contains(framework.target.konanTarget)) {
-            registerSwiftExportTask(framework)
+            registerSwiftExportEmbedTask(framework)
         } else {
             null
         }

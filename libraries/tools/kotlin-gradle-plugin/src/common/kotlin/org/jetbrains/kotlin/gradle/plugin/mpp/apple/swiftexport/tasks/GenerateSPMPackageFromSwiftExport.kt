@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
+package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
@@ -11,6 +11,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.work.DisableCachingByDefault
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
 import org.jetbrains.kotlin.gradle.utils.appendLine
 import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.incremental.createDirectory
@@ -18,9 +19,6 @@ import org.jetbrains.kotlin.incremental.deleteRecursivelyOrThrow
 
 @DisableCachingByDefault(because = "Swift Export is experimental, so no caching for now")
 internal abstract class GenerateSPMPackageFromSwiftExport : DefaultTask() {
-    companion object {
-        private const val KOTLIN_RUNTIME = "KotlinRuntime"
-    }
 
     @get:Input
     abstract val swiftApiModuleName: Property<String>
@@ -64,7 +62,7 @@ internal abstract class GenerateSPMPackageFromSwiftExport : DefaultTask() {
     private val sourcesPath get() = spmPackageRootPath.resolve("Sources")
     private val swiftApiModulePath get() = sourcesPath.resolve(swiftApiModule)
     private val headerBridgeModulePath get() = sourcesPath.resolve(headerBridgeModule)
-    private val kotlinRuntimeModulePath get() = sourcesPath.resolve(KOTLIN_RUNTIME)
+    private val kotlinRuntimeModulePath get() = sourcesPath.resolve(SwiftExportConstants.KOTLIN_RUNTIME)
 
     @TaskAction
     fun generate() {
@@ -85,8 +83,9 @@ internal abstract class GenerateSPMPackageFromSwiftExport : DefaultTask() {
     }
 
     private fun createHeaderTarget() {
-        headerBridgePath.getFile().copyTo(
-            headerBridgeIncludePath.resolve("${headerBridgeModule}.h")
+        val headerBridgeFile = headerBridgePath.getFile()
+        headerBridgeFile.copyTo(
+            headerBridgeIncludePath.resolve(headerBridgeFile.name)
         )
         headerBridgeIncludePath.resolve("module.modulemap").writeText(
             """
@@ -137,13 +136,13 @@ internal abstract class GenerateSPMPackageFromSwiftExport : DefaultTask() {
                 targets: [
                     .target(
                         name: "$swiftApiModule",
-                        dependencies: ["$headerBridgeModule", "$KOTLIN_RUNTIME"]
+                        dependencies: ["$headerBridgeModule", "${SwiftExportConstants.KOTLIN_RUNTIME}"]
                     ),
                     .target(
                         name: "$headerBridgeModule"
                     ),
                     .target(
-                        name: "$KOTLIN_RUNTIME"
+                        name: "${SwiftExportConstants.KOTLIN_RUNTIME}"
                     )
                 ]
             )

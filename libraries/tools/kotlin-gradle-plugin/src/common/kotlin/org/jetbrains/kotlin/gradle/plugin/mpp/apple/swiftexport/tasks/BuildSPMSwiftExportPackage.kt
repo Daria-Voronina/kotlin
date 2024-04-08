@@ -3,12 +3,10 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
+package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.Directory
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.RegularFile
+import org.gradle.api.file.*
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
@@ -16,17 +14,15 @@ import org.gradle.api.tasks.*
 import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.gradle.utils.listFilesOrEmpty
-import org.jetbrains.kotlin.gradle.utils.mapToFile
 import org.jetbrains.kotlin.gradle.utils.runCommand
 import org.jetbrains.kotlin.utils.keysToMap
 import java.io.File
 import javax.inject.Inject
 
 @DisableCachingByDefault(because = "Swift Export is experimental, so no caching for now")
-internal abstract class BuildSPMSwiftExportPackage : DefaultTask() {
-
-    @get:Inject
-    abstract val providerFactory: ProviderFactory
+internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
+    private val providerFactory: ProviderFactory
+) : DefaultTask() {
 
     @get:Input
     abstract val swiftApiModuleName: Property<String>
