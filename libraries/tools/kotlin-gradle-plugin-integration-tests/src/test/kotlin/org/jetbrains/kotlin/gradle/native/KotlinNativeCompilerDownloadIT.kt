@@ -67,7 +67,6 @@ class KotlinNativeCompilerDownloadIT : KGPBaseTest() {
     @GradleTest
     fun shouldNotDownloadKotlinNativeWithCustomKonanHome(gradleVersion: GradleVersion, @TempDir konanTemp: Path) {
         val kotlinNativeVersion = System.getProperty("kotlinNativeVersion")
-        // When a Kotlin Native version has not been passed means that there was not common test directory with a preinstalled kotlin native bundle
         if (kotlinNativeVersion != null) {
             val bundleDirName = "kotlin-native-prebuilt-$currentPlatform-$kotlinNativeVersion"
             val customKonanHome = konanDir.resolve(bundleDirName)
@@ -78,6 +77,42 @@ class KotlinNativeCompilerDownloadIT : KGPBaseTest() {
                     freeArgs = listOf("-Pkotlin.native.home=$customKonanHome"),
                 ),
             ) {
+                build("assemble") {
+                    assertOutputContains("A user-provided Kotlin/Native distribution configured: ${customKonanHome}. Disabling Kotlin Native Toolchain auto-provisioning.")
+                    assertOutputDoesNotContain(UNPUCK_KONAN_FINISHED_LOG)
+                    assertOutputDoesNotContain("Please wait while Kotlin/Native")
+                }
+            }
+        }
+    }
+
+    @DisplayName("Test kotlin native prebuilt should not override kotlin.native.version property")
+    @GradleTest
+    fun kotlinNativePrebuiltShouldNotOverrideNativeVersion(gradleVersion: GradleVersion, @TempDir konanTemp: Path) {
+        val kotlinNativeVersion = System.getProperty("kotlinNativeVersion")
+        if (kotlinNativeVersion != null) {
+            val bundleDirName = "kotlin-native-prebuilt-$currentPlatform-$kotlinNativeVersion"
+            val customKonanHome = konanDir.resolve(bundleDirName)
+            nativeProject(
+                "native-simple-project",
+                gradleVersion,
+                buildOptions = defaultBuildOptions.copy(
+                    nativeOptions = defaultBuildOptions.nativeOptions.copy(
+                        distributionType = "prebuilt",
+                        version = kotlinNativeVersion
+                    )
+                ),
+            ) {
+                buildGradleKts.appendText(
+                    """
+                        buildscript {
+                            dependencies {
+                                classpath(\"org.jetbrains.kotlin:kotlin-native-prebuilt:$STABLE_RELEASE\")\n" +
+                            }
+                        }
+                    """.trimIndent()
+                )
+
                 build("assemble") {
                     assertOutputContains("A user-provided Kotlin/Native distribution configured: ${customKonanHome}. Disabling Kotlin Native Toolchain auto-provisioning.")
                     assertOutputDoesNotContain(UNPUCK_KONAN_FINISHED_LOG)
