@@ -180,7 +180,7 @@ private fun Project.registerPackageGeneration(
 
         // Output
         task.packagePath.set(packageBuildRoot.flatMap { root ->
-            swiftApiModuleName.map { root.dir("${it}SwiftExportPackage") }
+            swiftApiModuleName.map { root.dir("${it}Package") }
         })
     }
 
@@ -199,10 +199,12 @@ private fun Project.registerSPMPackageBuild(
     val packageBuild = locateOrRegisterTask<BuildSPMSwiftExportPackage>(buildTaskName) { task ->
         task.group = BasePlugin.BUILD_GROUP
         task.description = "Builds $taskNamePrefix SPM package"
+
+        // Input
         task.swiftApiModuleName.set(swiftApiModuleName)
         task.swiftLibraryName.set(swiftApiLibraryName)
         task.packageBuildDirectory.set(packageBuildRoot)
-        task.workingDir.set(packageGenerationTask.flatMap { it.packagePath })
+        task.packageRootDirectory.set(packageGenerationTask.flatMap { it.packagePath })
     }
     packageBuild.dependsOn(packageGenerationTask)
     return packageBuild

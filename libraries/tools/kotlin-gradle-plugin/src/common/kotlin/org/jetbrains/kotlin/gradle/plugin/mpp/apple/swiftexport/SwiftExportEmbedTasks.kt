@@ -49,11 +49,13 @@ private fun Project.registerCopyTask(
     val copyTask = locateOrRegisterTask<CopySwiftExportIntermediatesForConsumer>(copyTaskName) { task ->
         task.group = BasePlugin.BUILD_GROUP
         task.description = "Copy $taskNamePrefix SPM intermediates"
+
+        // Input
         task.includeBridgeDirectory.set(layout.file(packageGenerationTask.map { it.headerBridgeIncludePath }))
         task.includeKotlinRuntimeDirectory.set(layout.file(packageGenerationTask.map { it.kotlinRuntimeIncludePath }))
         task.kotlinLibraryPath.set(layout.file(staticLibrary.linkTaskProvider.flatMap { it.outputFile }))
-        task.packageLibraryPath.set(layout.file(packageBuildTask.flatMap { it.packageLibraryPath.mapToFile() }))
-        task.packageInterfacesPath.set(layout.file(packageBuildTask.flatMap { it.interfacesPath.mapToFile() }))
+        task.packageLibraryPath.set(layout.file(packageBuildTask.map { it.packageLibraryPath }))
+        task.packageInterfacesPath.set(layout.file(packageBuildTask.map { it.interfacesPath }))
     }
     copyTask.dependsOn(packageBuildTask)
     return copyTask

@@ -54,8 +54,7 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
         })
     )
 
-    @get:OutputDirectory
-    val syntheticInterfacesDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
+    private val syntheticInterfacesDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
         builtProductsDirectory.flatMap {
             projectLayout.dir(providerFactory.provider {
                 it.asFile.resolve(SwiftExportConstants.KOTLIN_BRIDGE)
@@ -63,8 +62,7 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
         }
     )
 
-    @get:OutputDirectory
-    val kotlinRuntimeDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
+    private val kotlinRuntimeDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
         builtProductsDirectory.flatMap {
             projectLayout.dir(providerFactory.provider {
                 it.asFile.resolve(SwiftExportConstants.KOTLIN_RUNTIME)

@@ -14,14 +14,17 @@ import org.gradle.api.tasks.*
 import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.gradle.utils.listFilesOrEmpty
+import org.jetbrains.kotlin.gradle.utils.relativeOrAbsolute
 import org.jetbrains.kotlin.gradle.utils.runCommand
+import org.jetbrains.kotlin.incremental.createDirectory
+import org.jetbrains.kotlin.incremental.deleteRecursivelyOrThrow
 import org.jetbrains.kotlin.utils.keysToMap
 import java.io.File
 import javax.inject.Inject
 
 @DisableCachingByDefault(because = "Swift Export is experimental, so no caching for now")
 internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
-    private val providerFactory: ProviderFactory
+    private val providerFactory: ProviderFactory,
 ) : DefaultTask() {
 
     @get:Input
@@ -47,70 +50,73 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
     val platformName: Provider<String>
         get() = providerFactory.environmentVariable("PLATFORM_NAME")
 
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val workingDir: DirectoryProperty
-
-    @get:OutputDirectory
-    val interfacesPath: Provider<Directory>
-        get() = packageBuildDirectory.map { it.dir("dd-interfaces") }
-
-    @get:OutputDirectory
-    val objectFilesPath: Provider<Directory>
-        get() = packageBuildDirectory.map { it.dir("dd-o-files") }
-
-    @get:OutputDirectory
-    val buildIntermediatesPath: Provider<Directory>
-        get() = packageBuildDirectory.map { it.dir("dd-other") }
-
-    @get:OutputFile
-    val packageLibraryPath: Provider<RegularFile>
-        get() = objectFilesPath.map { it.file("lib${swiftLibraryName.get()}.a") }
-
-    @get:OutputDirectory
-    val swiftModulePath: Provider<Directory>
-        get() = interfacesPath.map { it.dir("${swiftApiModuleName.get()}.swiftmodule") }
-
     @get:Internal
     abstract val packageBuildDirectory: DirectoryProperty
 
+    @get:Internal
+    abstract val packageRootDirectory: DirectoryProperty
+
+    @get:Internal
+    internal val interfacesPath: File
+        get() = packageBuildDirectory.getFile().resolve("dd-interfaces")
+
+    @get:Internal
+    val objectFilesPath: File
+        get() = packageBuildDirectory.getFile().resolve("dd-o-files")
+
+    @get:Internal
+    val buildIntermediatesPath: File
+        get() = packageBuildDirectory.getFile().resolve("dd-other")
+
+    @get:Internal
+    val packageLibraryPath
+        get() = objectFilesPath.resolve("lib${swiftLibraryName.get()}.a")
+
+    @get:Internal
+    val swiftModulePath
+        get() = interfacesPath.resolve("${swiftApiModuleName.get()}.swiftmodule")
+
+    private val packageRootDirectoryPath
+        get() = packageRootDirectory.getFile()
+
     @TaskAction
     fun run() {
-        val syntheticObjectFilesDirectory = buildSyntheticProject()
-        packObjectFilesIntoLibrary(syntheticObjectFilesDirectory)
+        buildSyntheticPackage()
+        packObjectFilesIntoLibrary()
     }
 
-    private fun buildSyntheticProject(): File {
-        val objectFiles = objectFilesPath.getFile()
+    private fun buildSyntheticPackage() {
         val intermediatesDestination = mapOf(
             // Thin/universal object files
-            "TARGET_BUILD_DIR" to objectFiles.canonicalPath,
+            "TARGET_BUILD_DIR" to objectFilesPath.canonicalPath,
             // .swiftmodule interface
-            "BUILT_PRODUCTS_DIR" to interfacesPath.get().asFile.canonicalPath,
+            "BUILT_PRODUCTS_DIR" to interfacesPath.canonicalPath,
         )
         val inheritedBuildSettings = inheritedBuildSettingsFromEnvironment.mapValues {
-            it.value.get()
-        }
+            it.value.orNull
+        }.filterValues { it != null }
+
+        val command = listOf(
+            "xcodebuild",
+            "-derivedDataPath", buildIntermediatesPath.relativeOrAbsolute(packageRootDirectoryPath),
+            "-scheme", swiftApiModuleName.get(),
+            "-destination", destination(),
+        ) + (inheritedBuildSettings + intermediatesDestination).map { (k, v) -> "$k=$v" }
 
         // FIXME: This will not work with dynamic libraries
         runCommand(
-            listOf(
-                "xcodebuild",
-                "-derivedDataPath", buildIntermediatesPath.getFile().canonicalPath,
-                "-scheme", swiftApiModuleName.get(),
-                "-destination", destination(),
-            ) + (inheritedBuildSettings + intermediatesDestination).map { (k, v) -> "$k=$v" },
+            command,
+            logger = logger,
             processConfiguration = {
-                directory(workingDir.getFile())
+                directory(packageRootDirectoryPath)
             }
         )
-        return objectFiles
     }
 
-    private fun packObjectFilesIntoLibrary(syntheticObjectFilesDirectory: File) {
-        val objectFilePaths = syntheticObjectFilesDirectory.listFilesOrEmpty().filter {
+    private fun packObjectFilesIntoLibrary() {
+        val objectFilePaths = objectFilesPath.listFilesOrEmpty().filter {
             it.extension == "o"
-        }.map { it.canonicalPath }
+        }.map { it.relativeOrAbsolute(packageRootDirectoryPath) }
         if (objectFilePaths.isEmpty()) {
             error("Synthetic project build didn't produce any object files")
         }
@@ -118,8 +124,12 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
         runCommand(
             listOf(
                 "libtool", "-static",
-                "-o", packageLibraryPath.get().asFile.canonicalPath,
+                "-o", packageLibraryPath.relativeOrAbsolute(packageRootDirectoryPath),
             ) + objectFilePaths,
+            logger = logger,
+            processConfiguration = {
+                directory(packageRootDirectoryPath)
+            }
         )
     }
 

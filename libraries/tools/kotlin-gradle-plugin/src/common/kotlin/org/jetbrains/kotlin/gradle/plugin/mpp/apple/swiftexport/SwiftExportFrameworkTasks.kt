@@ -13,15 +13,14 @@ import org.gradle.api.tasks.TaskProvider
 import org.jetbrains.kotlin.gradle.plugin.mpp.AbstractNativeLibrary
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportFrameworkTask
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.ModuleDefinition
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.SwiftExportFrameworkTask
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.ModuleDefinition
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.BuildSPMSwiftExportPackage
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.GenerateSPMPackageFromSwiftExport
 import org.jetbrains.kotlin.gradle.tasks.dependsOn
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
 import org.jetbrains.kotlin.gradle.utils.konanDistribution
-import org.jetbrains.kotlin.gradle.utils.mapToFile
 import org.jetbrains.kotlin.konan.target.Distribution
 
 internal fun Project.registerSwiftExportFrameworkPipelineTask(
@@ -70,16 +69,20 @@ private fun Project.registerProduceSwiftExportFrameworkTask(
             listOf(swiftExportModule, kotlinModule)
         }
         val mainLibrary = staticLibrary.linkTaskProvider.flatMap { it.outputFile }
-        val spmLibrary = packageBuildTask.flatMap { it.packageLibraryPath.mapToFile() }
-        val swiftModule = packageBuildTask.flatMap { it.swiftModulePath }
+        val spmLibrary = packageBuildTask.map { it.packageLibraryPath }
+        val swiftModule = packageBuildTask.map { it.swiftModulePath }
 
         task.group = BasePlugin.BUILD_GROUP
         task.description = "Creates $taskNamePrefix Swift Export Apple Framework"
-        task.workingDir.set(layout.buildDirectory)
+
+        // Input
         task.binaryName.set(swiftApiModuleName)
         task.libraries.from(mainLibrary, spmLibrary)
-        task.swiftModule.set(swiftModule)
+        task.swiftModule.set(layout.dir(swiftModule))
         task.headerDefinitions.set(headers)
+
+        // Output
+        task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework"))
     }
 
     createFramework.dependsOn(staticLibrary.linkTaskProvider)

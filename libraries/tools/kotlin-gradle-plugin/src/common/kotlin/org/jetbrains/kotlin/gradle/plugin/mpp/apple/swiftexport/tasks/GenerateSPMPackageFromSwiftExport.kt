@@ -48,10 +48,12 @@ internal abstract class GenerateSPMPackageFromSwiftExport : DefaultTask() {
     abstract val packagePath: DirectoryProperty
 
     @get:Internal
-    val headerBridgeIncludePath get() = headerBridgeModulePath.resolve("include")
+    val headerBridgeIncludePath
+        get() = headerBridgeModulePath.resolve("include")
 
     @get:Internal
-    val kotlinRuntimeIncludePath get() = kotlinRuntimeModulePath.resolve("include")
+    val kotlinRuntimeIncludePath
+        get() = kotlinRuntimeModulePath.resolve("include")
 
     private val swiftLibrary get() = swiftLibraryName.get()
     private val kotlinLibrary get() = kotlinLibraryName.get()

@@ -3,7 +3,7 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
-package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal
+package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.*
@@ -15,6 +15,8 @@ import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.gradle.utils.relativeOrAbsolute
 import org.jetbrains.kotlin.gradle.utils.runCommand
+import org.jetbrains.kotlin.incremental.createDirectory
+import org.jetbrains.kotlin.incremental.deleteRecursivelyOrThrow
 import org.jetbrains.kotlin.konan.target.HostManager
 import java.io.File
 import java.io.Serializable
@@ -46,10 +48,6 @@ internal abstract class SwiftExportFrameworkTask @Inject constructor(
     @get:Optional
     abstract val headerDefinitions: ListProperty<ModuleDefinition>
 
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val workingDir: DirectoryProperty
-
     @get:Internal
     val libraryName: Provider<String>
         get() = binaryName.map { "lib${it}.a" }
@@ -59,24 +57,34 @@ internal abstract class SwiftExportFrameworkTask @Inject constructor(
         get() = binaryName.map { "${it}.xcframework" }
 
     @get:OutputDirectory
-    val frameworkPath: Provider<Directory>
-        get() = workingDir.map { it.dir(frameworkName.get()) }
+    abstract val frameworkRoot: DirectoryProperty
 
-    @get:OutputFile
-    val libraryPath: Provider<RegularFile>
-        get() = workingDir.map { it.file(libraryName.get()) }
+    private val frameworkRootPath get() = frameworkRoot.getFile()
 
-    @get:OutputDirectory
-    val headersPath: Provider<Directory>
-        get() = workingDir.map { it.dir("Headers") }
+    private val frameworkPath: File
+        get() = frameworkRootPath.resolve(frameworkName.get())
+
+    private val libraryPath: File
+        get() = frameworkRootPath.resolve(libraryName.get())
+
+    private val headersPath: File
+        get() = frameworkRootPath.resolve("Headers")
 
     @TaskAction
     fun assembleFramework() {
+        prepareFrameworkDirectory()
         assembleBinary()
         prepareHeaders()
         createXCFramework()
         copyModule()
         cleanup()
+    }
+
+    private fun prepareFrameworkDirectory() {
+        if (frameworkRootPath.exists()) {
+            frameworkRootPath.deleteRecursivelyOrThrow()
+        }
+        headersPath.createDirectory()
     }
 
     private fun assembleBinary() {
@@ -88,10 +96,11 @@ internal abstract class SwiftExportFrameworkTask @Inject constructor(
             listOf(
                 "libtool",
                 "-static",
-                "-o", libraryPath.getFile().name
-            ) + libraries.asFileTree.map { it.relativeOrAbsolute(workingDir.getFile()) },
+                "-o", libraryPath.name
+            ) + libraries.asFileTree.map { it.relativeOrAbsolute(frameworkRootPath) },
+            logger = logger,
             processConfiguration = {
-                directory(workingDir.getFile())
+                directory(frameworkRootPath)
             }
         )
     }
@@ -101,19 +110,20 @@ internal abstract class SwiftExportFrameworkTask @Inject constructor(
             listOf(
                 "xcodebuild",
                 "-create-xcframework",
-                "-library", libraryPath.getFile().name,
-                "-headers", headersPath.getFile().relativeOrAbsolute(workingDir.getFile()),
+                "-library", libraryPath.name,
+                "-headers", headersPath.relativeOrAbsolute(frameworkRootPath),
                 "-allow-internal-distribution",
                 "-output", binaryName.map { "$it.xcframework" }.get()
             ),
+            logger = logger,
             processConfiguration = {
-                directory(workingDir.getFile())
+                directory(frameworkRootPath)
             }
         )
     }
 
     private fun prepareHeaders() {
-        val modulemap = headersPath.getFile().resolve("module.modulemap")
+        val modulemap = headersPath.resolve("module.modulemap")
         headerDefinitions.getOrElse(emptyList()).forEach { moduleDef ->
             modulemap.appendText(
                 """
@@ -133,13 +143,13 @@ internal abstract class SwiftExportFrameworkTask @Inject constructor(
     }
 
     private fun copyModule() {
-        frameworkPath.getFile().listFiles()?.let { arch ->
+        frameworkPath.listFiles()?.let { arch ->
             arch.filter {
                 it.isDirectory
             }.forEach { targetFramework ->
                 fileSystem.copy {
                     it.from(swiftModule)
-                    it.into(targetFramework.resolve(swiftModule.asFile.get().name))
+                    it.into(targetFramework.resolve(swiftModule.getFile().name))
                 }
             }
         }
