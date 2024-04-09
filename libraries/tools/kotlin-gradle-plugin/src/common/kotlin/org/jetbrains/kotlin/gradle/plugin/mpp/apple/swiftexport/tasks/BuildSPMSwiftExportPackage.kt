@@ -65,12 +65,16 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
         get() = packageBuildDirectory.getFile().resolve("dd-o-files")
 
     @get:Internal
+    val libraryFilesPath: File
+        get() = packageBuildDirectory.getFile().resolve("dd-a-files")
+
+    @get:Internal
     val buildIntermediatesPath: File
         get() = packageBuildDirectory.getFile().resolve("dd-other")
 
     @get:Internal
     val packageLibraryPath
-        get() = objectFilesPath.resolve("lib${swiftLibraryName.get()}.a")
+        get() = libraryFilesPath.resolve("lib${swiftLibraryName.get()}.a")
 
     @get:Internal
     val swiftModulePath
@@ -120,6 +124,8 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
         if (objectFilePaths.isEmpty()) {
             error("Synthetic project build didn't produce any object files")
         }
+
+        libraryFilesPath.createDirectory()
 
         runCommand(
             listOf(

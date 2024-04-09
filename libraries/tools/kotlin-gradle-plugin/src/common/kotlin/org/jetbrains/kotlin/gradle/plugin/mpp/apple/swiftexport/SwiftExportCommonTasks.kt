@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.file.Directory
 import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
@@ -38,14 +37,13 @@ internal fun Project.setupCommonSwiftExportPipeline(
     configuration: (
         packageBuild: TaskProvider<BuildSPMSwiftExportPackage>,
         packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
-        staticLibrary: AbstractNativeLibrary
+        staticLibrary: AbstractNativeLibrary,
     ) -> TaskProvider<out Task>,
 ): TaskProvider<out Task> {
     val mainCompilation = target.compilations.getByName("main")
 
     val swiftExportTask = registerSwiftExportRun(
-        swiftApiModuleName = swiftApiModuleName,
-        taskNamePrefix = taskNamePrefix,
+        swiftApiModuleName = swiftApiModuleName
     )
     val staticLibrary = registerSwiftExportCompilationAndGetBinary(
         buildType = buildType,
@@ -58,21 +56,17 @@ internal fun Project.setupCommonSwiftExportPipeline(
     val kotlinStaticLibraryName = staticLibrary.linkTaskProvider.flatMap { it.binary.baseNameProvider }
     val swiftApiLibraryName = swiftApiModuleName.map { it + "Library" }
 
-    val packageBuildRoot = layout.buildDirectory.dir("${taskNamePrefix}SPMPackage")
     val packageGenerationTask = registerPackageGeneration(
-        taskNamePrefix = taskNamePrefix,
         swiftApiModuleName = swiftApiModuleName,
         swiftApiLibraryName = swiftApiLibraryName,
         kotlinStaticLibraryName = kotlinStaticLibraryName,
         swiftExportTask = swiftExportTask,
-        staticLibrary = staticLibrary,
-        packageBuildRoot = packageBuildRoot,
     )
     val packageBuild = registerSPMPackageBuild(
         taskNamePrefix = taskNamePrefix,
         swiftApiModuleName = swiftApiModuleName,
         swiftApiLibraryName = swiftApiLibraryName,
-        packageBuildRoot = packageBuildRoot,
+        staticLibrary = staticLibrary,
         packageGenerationTask = packageGenerationTask,
     )
 
@@ -81,9 +75,8 @@ internal fun Project.setupCommonSwiftExportPipeline(
 
 private fun Project.registerSwiftExportRun(
     swiftApiModuleName: Provider<String>,
-    taskNamePrefix: String,
 ): TaskProvider<SwiftExportTask> {
-    val swiftExportTaskName = taskNamePrefix + "SwiftExport"
+    val swiftExportTaskName = "swiftExport"
 
     return locateOrRegisterTask<SwiftExportTask>(swiftExportTaskName) { task ->
         val commonMainProvider = project.future {
@@ -151,18 +144,15 @@ private fun registerSwiftExportCompilationAndGetBinary(
 }
 
 private fun Project.registerPackageGeneration(
-    taskNamePrefix: String,
     swiftApiModuleName: Provider<String>,
     swiftApiLibraryName: Provider<String>,
     kotlinStaticLibraryName: Provider<String>,
     swiftExportTask: TaskProvider<SwiftExportTask>,
-    staticLibrary: AbstractNativeLibrary,
-    packageBuildRoot: Provider<Directory>,
 ): TaskProvider<GenerateSPMPackageFromSwiftExport> {
-    val spmPackageGenTaskName = taskNamePrefix + "GenerateSPMPackage"
+    val spmPackageGenTaskName = "generateSPMPackage"
     val packageGenerationTask = locateOrRegisterTask<GenerateSPMPackageFromSwiftExport>(spmPackageGenTaskName) { task ->
         task.group = BasePlugin.BUILD_GROUP
-        task.description = "Generates $taskNamePrefix SPM Package"
+        task.description = "Generates SPM Package"
 
         // Input
         task.kotlinRuntime.set(
@@ -179,12 +169,9 @@ private fun Project.registerPackageGeneration(
         task.swiftApiModuleName.set(swiftApiModuleName)
 
         // Output
-        task.packagePath.set(packageBuildRoot.flatMap { root ->
-            swiftApiModuleName.map { root.dir("${it}Package") }
-        })
+        task.packagePath.set(layout.buildDirectory.dir("SPMPackage"))
     }
 
-    packageGenerationTask.dependsOn(staticLibrary.linkTaskProvider)
     return packageGenerationTask
 }
 
@@ -192,7 +179,7 @@ private fun Project.registerSPMPackageBuild(
     taskNamePrefix: String,
     swiftApiModuleName: Provider<String>,
     swiftApiLibraryName: Provider<String>,
-    packageBuildRoot: Provider<Directory>,
+    staticLibrary: AbstractNativeLibrary,
     packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
 ): TaskProvider<BuildSPMSwiftExportPackage> {
     val buildTaskName = taskNamePrefix + "BuildSPMPackage"
@@ -203,9 +190,10 @@ private fun Project.registerSPMPackageBuild(
         // Input
         task.swiftApiModuleName.set(swiftApiModuleName)
         task.swiftLibraryName.set(swiftApiLibraryName)
-        task.packageBuildDirectory.set(packageBuildRoot)
+        task.packageBuildDirectory.set(layout.buildDirectory.dir("${taskNamePrefix}SPMBuild"))
         task.packageRootDirectory.set(packageGenerationTask.flatMap { it.packagePath })
     }
+    packageBuild.dependsOn(staticLibrary.linkTaskProvider)
     packageBuild.dependsOn(packageGenerationTask)
     return packageBuild
 }
