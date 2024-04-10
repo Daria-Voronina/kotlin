@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
 
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
 import org.jetbrains.kotlin.gradle.plugin.mpp.AbstractNativeLibrary
@@ -21,6 +20,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.GenerateSP
 import org.jetbrains.kotlin.gradle.tasks.dependsOn
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
 import org.jetbrains.kotlin.gradle.utils.konanDistribution
+import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
 import org.jetbrains.kotlin.konan.target.Distribution
 
 internal fun Project.registerSwiftExportFrameworkPipelineTask(
@@ -36,7 +36,7 @@ internal fun Project.registerSwiftExportFrameworkPipelineTask(
         buildType = buildType
     ) { packageBuild, packageGenerationTask, staticLibrary ->
         registerProduceSwiftExportFrameworkTask(
-            taskNamePrefix = taskNamePrefix,
+            buildType = buildType,
             staticLibrary = staticLibrary,
             swiftApiModuleName = swiftApiModuleName,
             packageGenerationTask = packageGenerationTask,
@@ -46,46 +46,62 @@ internal fun Project.registerSwiftExportFrameworkPipelineTask(
 }
 
 private fun Project.registerProduceSwiftExportFrameworkTask(
-    taskNamePrefix: String,
+    buildType: NativeBuildType,
     staticLibrary: AbstractNativeLibrary,
     swiftApiModuleName: Provider<String>,
     packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
     packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
-): TaskProvider<SwiftExportFrameworkTask> {
-    val frameworkTaskName = taskNamePrefix + "SwiftExportFramework"
-    val createFramework = locateOrRegisterTask<SwiftExportFrameworkTask>(frameworkTaskName) { task ->
+): TaskProvider<out Task> {
 
-        val headers = packageGenerationTask.map { packageTask ->
-            val swiftExportModule = ModuleDefinition(
-                packageTask.headerBridgeModuleName.get(),
-                packageTask.headerBridgePath.asFile.get()
-            )
+    val frameworkTaskName = lowerCamelCaseName(
+        "assemble",
+        buildType.getName(),
+        "swiftExportFramework"
+    )
 
-            val kotlinModule = ModuleDefinition(
-                SwiftExportConstants.KOTLIN_RUNTIME,
-                file(Distribution(konanDistribution.root.absolutePath).kotlinRuntimeForSwiftHeader)
-            )
-
-            listOf(swiftExportModule, kotlinModule)
-        }
-        val mainLibrary = staticLibrary.linkTaskProvider.flatMap { it.outputFile }
-        val spmLibrary = packageBuildTask.map { it.packageLibraryPath }
-        val swiftModule = packageBuildTask.map { it.swiftModulePath }
-
-        task.group = BasePlugin.BUILD_GROUP
-        task.description = "Creates $taskNamePrefix Swift Export Apple Framework"
+    val frameworkTas = locateOrRegisterTask<SwiftExportFrameworkTask>(frameworkTaskName) { task ->
+        task.description = "Creates Swift Export Apple Framework"
 
         // Input
         task.binaryName.set(swiftApiModuleName)
-        task.libraries.from(mainLibrary, spmLibrary)
-        task.swiftModule.set(layout.dir(swiftModule))
-        task.headerDefinitions.set(headers)
+
+        task.libraries.from(
+            staticLibrary.linkTaskProvider.flatMap { it.outputFile },
+            packageBuildTask.map { it.packageLibraryPath }
+        )
+
+        task.swiftModule.set(
+            layout.dir(
+                packageBuildTask.map { it.swiftModulePath }
+            )
+        )
+
+        task.headerDefinitions.set(packageModuleDefinitions(packageGenerationTask))
 
         // Output
-        task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework"))
+        task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework/${buildType.getName().capitalize()}"))
     }
 
-    createFramework.dependsOn(staticLibrary.linkTaskProvider)
-    createFramework.dependsOn(packageBuildTask)
-    return createFramework
+    frameworkTas.dependsOn(staticLibrary.linkTaskProvider)
+    frameworkTas.dependsOn(packageBuildTask)
+
+    return frameworkTas
+}
+
+private fun Project.packageModuleDefinitions(
+    packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
+): Provider<List<ModuleDefinition>> {
+    return packageGenerationTask.map { packageTask ->
+        val swiftExportModule = ModuleDefinition(
+            packageTask.headerBridgeModuleName.get(),
+            packageTask.headerBridgePath.asFile.get()
+        )
+
+        val kotlinModule = ModuleDefinition(
+            SwiftExportConstants.KOTLIN_RUNTIME,
+            file(Distribution(konanDistribution.root.absolutePath).kotlinRuntimeForSwiftHeader)
+        )
+
+        listOf(swiftExportModule, kotlinModule)
+    }
 }

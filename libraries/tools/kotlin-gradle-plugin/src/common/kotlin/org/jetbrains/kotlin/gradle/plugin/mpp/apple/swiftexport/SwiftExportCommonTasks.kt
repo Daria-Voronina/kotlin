@@ -76,7 +76,9 @@ internal fun Project.setupCommonSwiftExportPipeline(
 private fun Project.registerSwiftExportRun(
     swiftApiModuleName: Provider<String>,
 ): TaskProvider<SwiftExportTask> {
-    val swiftExportTaskName = "swiftExport"
+    val swiftExportTaskName = lowerCamelCaseName(
+        "SwiftExport"
+    )
 
     return locateOrRegisterTask<SwiftExportTask>(swiftExportTaskName) { task ->
         val commonMainProvider = project.future {
@@ -90,7 +92,7 @@ private fun Project.registerSwiftExportRun(
                 .single()
         }
 
-        val outputs = layout.buildDirectory.dir(swiftExportTaskName)
+        val outputs = layout.buildDirectory.dir("SwiftExport")
         val swiftIntermediates = outputs.map { it.dir("swiftIntermediates") }
         val kotlinIntermediates = outputs.map { it.dir("kotlinIntermediates") }
 
