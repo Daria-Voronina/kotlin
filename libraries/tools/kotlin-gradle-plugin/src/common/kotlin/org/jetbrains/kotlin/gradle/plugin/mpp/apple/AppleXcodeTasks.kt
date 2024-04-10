@@ -270,14 +270,16 @@ internal fun Project.registerEmbedAndSignAppleFrameworkTask(framework: Framework
 
     val assembleTask = registerAssembleAppleFrameworkTask(framework) ?: return
     assembleTask.dependsOn(checkSandboxAndWriteProtectionTask)
+    swiftExportTask?.dependsOn(checkSandboxAndWriteProtectionTask)
 
     if (framework.buildType != envBuildType || !envTargets.contains(framework.konanTarget)) return
 
     embedAndSignTask.configure { task ->
         val frameworkFile = framework.outputFile
-        task.dependsOn(assembleTask)
         if (swiftExportTask != null) {
             task.dependsOn(swiftExportTask)
+        } else {
+            task.dependsOn(assembleTask)
         }
         task.sourceFramework.fileProvider(appleFrameworkDir(frameworkTaskName).map { it.resolve(frameworkFile.name) })
         task.destinationDirectory.set(envEmbeddedFrameworksDir)
