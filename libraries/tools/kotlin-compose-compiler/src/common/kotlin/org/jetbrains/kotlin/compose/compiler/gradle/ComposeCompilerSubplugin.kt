@@ -82,7 +82,8 @@ class ComposeCompilerGradleSubplugin
                 add(composeCompilerExtension.suppressKotlinVersionCompatibilityCheck.map {
                     SubpluginOption("suppressKotlinVersionCompatibilityCheck", it)
                 }.orElse(EMPTY_OPTION))
-                add(composeCompilerExtension.enableExperimentalStrongSkippingMode.map {
+                add(composeCompilerExtension.enableStrongSkippingMode.map {
+                    // TODO: Rename once the Compose compiler is also renamed
                     SubpluginOption("experimentalStrongSkipping", it.toString())
                 })
                 add(composeCompilerExtension.stabilityConfigurationFile.map {
