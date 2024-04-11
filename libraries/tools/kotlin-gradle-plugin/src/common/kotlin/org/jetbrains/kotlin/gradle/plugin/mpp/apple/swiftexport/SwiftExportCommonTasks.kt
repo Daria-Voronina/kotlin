@@ -64,6 +64,8 @@ internal fun Project.setupCommonSwiftExportPipeline(
     )
     val packageBuild = registerSPMPackageBuild(
         taskNamePrefix = taskNamePrefix,
+        target = target,
+        configuration = buildType.getName().capitalize(),
         swiftApiModuleName = swiftApiModuleName,
         swiftApiLibraryName = swiftApiLibraryName,
         staticLibrary = staticLibrary,
@@ -77,7 +79,7 @@ private fun Project.registerSwiftExportRun(
     swiftApiModuleName: Provider<String>,
 ): TaskProvider<SwiftExportTask> {
     val swiftExportTaskName = lowerCamelCaseName(
-        "SwiftExport"
+        "swiftExport"
     )
 
     return locateOrRegisterTask<SwiftExportTask>(swiftExportTaskName) { task ->
@@ -151,7 +153,7 @@ private fun Project.registerPackageGeneration(
     kotlinStaticLibraryName: Provider<String>,
     swiftExportTask: TaskProvider<SwiftExportTask>,
 ): TaskProvider<GenerateSPMPackageFromSwiftExport> {
-    val spmPackageGenTaskName = "generateSPMPackage"
+    val spmPackageGenTaskName = lowerCamelCaseName("generateSPMPackage")
     val packageGenerationTask = locateOrRegisterTask<GenerateSPMPackageFromSwiftExport>(spmPackageGenTaskName) { task ->
         task.group = BasePlugin.BUILD_GROUP
         task.description = "Generates SPM Package"
@@ -179,12 +181,14 @@ private fun Project.registerPackageGeneration(
 
 private fun Project.registerSPMPackageBuild(
     taskNamePrefix: String,
+    target: KotlinNativeTarget,
+    configuration: String,
     swiftApiModuleName: Provider<String>,
     swiftApiLibraryName: Provider<String>,
     staticLibrary: AbstractNativeLibrary,
     packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
 ): TaskProvider<BuildSPMSwiftExportPackage> {
-    val buildTaskName = taskNamePrefix + "BuildSPMPackage"
+    val buildTaskName = lowerCamelCaseName(taskNamePrefix, "BuildSPMPackage")
     val packageBuild = locateOrRegisterTask<BuildSPMSwiftExportPackage>(buildTaskName) { task ->
         task.group = BasePlugin.BUILD_GROUP
         task.description = "Builds $taskNamePrefix SPM package"
@@ -192,9 +196,13 @@ private fun Project.registerSPMPackageBuild(
         // Input
         task.swiftApiModuleName.set(swiftApiModuleName)
         task.swiftLibraryName.set(swiftApiLibraryName)
-        task.packageBuildDirectory.set(layout.buildDirectory.dir("${taskNamePrefix}SPMBuild"))
+        task.packageBuildDirectory.set(layout.buildDirectory.dir("SPMBuild/${target.name}/$configuration"))
+        task.packageDerivedDataDirectory.set(layout.buildDirectory.dir("SPMDerivedData"))
         task.packageRootDirectory.set(packageGenerationTask.flatMap { it.packagePath })
+        task.target.set(target.konanTarget)
+        task.configuration.set(configuration)
     }
+
     packageBuild.dependsOn(staticLibrary.linkTaskProvider)
     packageBuild.dependsOn(packageGenerationTask)
     return packageBuild

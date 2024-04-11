@@ -156,11 +156,20 @@ internal abstract class SwiftExportFrameworkTask @Inject constructor(
     }
 
     private fun cleanup() {
-        fileSystem.delete {
-            it.delete(libraryPath)
+        try {
+            fileSystem.delete {
+                it.delete(libraryPath)
+            }
+        } catch (e: Exception) {
+            logger.warn("Can't delete ${libraryPath.absolutePath} folder", e)
         }
-        fileSystem.delete {
-            it.delete(headersPath)
+
+        try {
+            fileSystem.delete {
+                it.delete(headersPath)
+            }
+        } catch (e: Exception) {
+            logger.warn("Can't delete ${headersPath.absolutePath} folder", e)
         }
     }
 }

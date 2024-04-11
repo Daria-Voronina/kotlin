@@ -35,6 +35,16 @@ internal fun Project.registerSwiftExportFrameworkPipelineTask(
         target = target,
         buildType = buildType
     ) { packageBuild, packageGenerationTask, staticLibrary ->
+
+        val mergeLibrariesTask = registerMergeLibraryTask(
+            buildType = buildType,
+            target = target,
+            taskNamePrefix = taskNamePrefix,
+            staticLibrary = staticLibrary,
+            swiftApiModuleName = swiftApiModuleName,
+            packageBuildTask = packageBuild
+        )
+
         registerProduceSwiftExportFrameworkTask(
             buildType = buildType,
             staticLibrary = staticLibrary,
@@ -59,7 +69,7 @@ private fun Project.registerProduceSwiftExportFrameworkTask(
         "swiftExportFramework"
     )
 
-    val frameworkTas = locateOrRegisterTask<SwiftExportFrameworkTask>(frameworkTaskName) { task ->
+    val frameworkTask = locateOrRegisterTask<SwiftExportFrameworkTask>(frameworkTaskName) { task ->
         task.description = "Creates Swift Export Apple Framework"
 
         // Input
@@ -82,10 +92,10 @@ private fun Project.registerProduceSwiftExportFrameworkTask(
         task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework/${buildType.getName().capitalize()}"))
     }
 
-    frameworkTas.dependsOn(staticLibrary.linkTaskProvider)
-    frameworkTas.dependsOn(packageBuildTask)
+    frameworkTask.dependsOn(staticLibrary.linkTaskProvider)
+    frameworkTask.dependsOn(packageBuildTask)
 
-    return frameworkTas
+    return frameworkTask
 }
 
 private fun Project.packageModuleDefinitions(
