@@ -745,7 +745,7 @@ internal class TestBundleCompilation(
     tryPassSystemCacheDirectory: Boolean = true,
 ) : FinalBinaryCompilation<XCTestBundle>(
     settings,
-    CacheMode.WithoutCache,  // TODO: investigate why enabling caches lead to link failure "Undefined symbols"
+    settings.get(),
     freeCompilerArgs,
     sourceModules,
     dependencies,
