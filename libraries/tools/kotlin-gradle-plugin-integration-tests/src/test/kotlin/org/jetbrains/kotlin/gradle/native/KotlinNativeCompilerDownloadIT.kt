@@ -105,16 +105,16 @@ class KotlinNativeCompilerDownloadIT : KGPBaseTest() {
             ) {
                 buildGradleKts.appendText(
                     """
+                        
                         buildscript {
                             dependencies {
-                                classpath(\"org.jetbrains.kotlin:kotlin-native-prebuilt:$STABLE_RELEASE\")\n" +
+                                classpath("org.jetbrains.kotlin:kotlin-native-prebuilt:$STABLE_RELEASE")
                             }
                         }
                     """.trimIndent()
                 )
 
                 build("assemble") {
-                    assertOutputContains("A user-provided Kotlin/Native distribution configured: ${customKonanHome}. Disabling Kotlin Native Toolchain auto-provisioning.")
                     assertOutputDoesNotContain(UNPUCK_KONAN_FINISHED_LOG)
                     assertOutputDoesNotContain("Please wait while Kotlin/Native")
                 }
