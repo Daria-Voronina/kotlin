@@ -7,9 +7,9 @@ package org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport
 
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.plugins.BasePlugin
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
-import org.jetbrains.kotlin.gradle.plugin.mpp.AbstractNativeLibrary
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
@@ -37,16 +37,7 @@ internal fun Project.registerSwiftExportFrameworkPipelineTask(
         taskNamePrefix = taskNamePrefix,
         target = target,
         buildType = buildType
-    ) { packageBuild, packageGenerationTask, staticLibrary ->
-
-        val mergeLibrariesTask = registerMergeLibraryTask(
-            buildType = buildType,
-            target = target,
-            taskNamePrefix = taskNamePrefix,
-            staticLibrary = staticLibrary,
-            swiftApiModuleName = swiftApiModuleName,
-            packageBuildTask = packageBuild
-        )
+    ) { packageBuild, packageGenerationTask, mergeLibrariesTask ->
 
         registerProduceSwiftExportFrameworkTask(
             buildType = buildType,
@@ -59,51 +50,6 @@ internal fun Project.registerSwiftExportFrameworkPipelineTask(
     }
 }
 
-private fun Project.registerMergeLibraryTask(
-    buildType: NativeBuildType,
-    target: KotlinNativeTarget,
-    taskNamePrefix: String,
-    staticLibrary: AbstractNativeLibrary,
-    swiftApiModuleName: Provider<String>,
-    packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
-): TaskProvider<MergeStaticLibrariesTask> {
-
-    val mergeTaskName = lowerCamelCaseName(
-        taskNamePrefix,
-        "mergeLibraries"
-    )
-
-    val kotlinOutput = staticLibrary.linkTaskProvider.flatMap { it.outputFile }
-    val spmOutput = packageBuildTask.map { it.packageLibraryPath }
-    val libraryName = swiftApiModuleName.map {
-        lowerCamelCaseName(
-            "lib",
-            it,
-            ".a"
-        )
-    }
-
-    val mergeTask = locateOrRegisterTask<MergeStaticLibrariesTask>(mergeTaskName) { task ->
-        task.description = "Merges multiple libraries into one"
-
-        // Input
-        task.libraries.setFrom(kotlinOutput, spmOutput)
-
-        // Output
-        task.library.set(
-            layout.buildDirectory.file(
-                libraryName.map {
-                    "MergedLibraries/${target.name}/${buildType.getName().capitalize()}/$it"
-                }
-            )
-        )
-    }
-
-    mergeTask.dependsOn(staticLibrary.linkTaskProvider)
-    mergeTask.dependsOn(packageBuildTask)
-    return mergeTask
-}
-
 private fun Project.registerProduceSwiftExportFrameworkTask(
     buildType: NativeBuildType,
     target: KotlinNativeTarget,
@@ -113,9 +59,10 @@ private fun Project.registerProduceSwiftExportFrameworkTask(
     packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
 ): TaskProvider<out Task> {
 
+    val configuration = buildType.getName()
     val frameworkTaskName = lowerCamelCaseName(
         "assemble",
-        buildType.getName(),
+        configuration,
         "swiftExportFramework"
     )
 
@@ -124,14 +71,15 @@ private fun Project.registerProduceSwiftExportFrameworkTask(
     val headerDefinition = packageHeaderDefinitions(packageGenerationTask)
 
     val frameworkTask = locateOrRegisterTask<SwiftExportFrameworkTask>(frameworkTaskName) { task ->
-        task.description = "Creates Swift Export Apple Framework"
+        task.group = BasePlugin.BUILD_GROUP
+        task.description = "Creates Swift Export ${configuration.capitalize()} Apple Framework"
 
         // Input
         task.binaryName.set(swiftApiModuleName)
         task.headerDefinitions.set(headerDefinition)
 
         // Output
-        task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework/${buildType.getName().capitalize()}"))
+        task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework/${configuration.capitalize()}"))
     }.also {
         it.configure { task ->
             task.library(

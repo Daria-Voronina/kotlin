@@ -11,10 +11,12 @@ import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.Provider
 import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.*
 import org.gradle.work.DisableCachingByDefault
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
+import org.jetbrains.kotlin.gradle.utils.runCommand
 import java.io.File
 import javax.inject.Inject
 
@@ -23,7 +25,7 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
     objectFactory: ObjectFactory,
     projectLayout: ProjectLayout,
     providerFactory: ProviderFactory,
-    private val fileSystem: FileSystemOperations
+    private val fileSystem: FileSystemOperations,
 ) : DefaultTask() {
 
     @get:InputDirectory
@@ -34,18 +36,6 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val includeKotlinRuntimeDirectory: RegularFileProperty
 
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val kotlinLibraryPath: RegularFileProperty
-
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val packageLibraryPath: RegularFileProperty
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val packageInterfacesPath: RegularFileProperty
-
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val builtProductsDirectory: DirectoryProperty = objectFactory.directoryProperty().convention(
@@ -53,6 +43,17 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
             File(it)
         })
     )
+
+    private val libraries = mutableListOf<Provider<File>>()
+    private val interfaces = mutableListOf<Provider<File>>()
+
+    fun addLibrary(library: Provider<File>) {
+        libraries.add(library)
+    }
+
+    fun addInterface(swiftInterface: Provider<File>) {
+        interfaces.add(swiftInterface)
+    }
 
     private val syntheticInterfacesDestinationPath: DirectoryProperty = objectFactory.directoryProperty().convention(
         builtProductsDirectory.flatMap {
@@ -72,16 +73,48 @@ internal abstract class CopySwiftExportIntermediatesForConsumer @Inject construc
 
     @TaskAction
     fun copy() {
-        fileSystem.copy {
-            it.from(kotlinLibraryPath)
-            it.from(packageInterfacesPath)
-            it.from(packageLibraryPath)
-            it.into(builtProductsDirectory)
+        mergeAndCopyLibrary()
+        copyInterfaces()
+        copyOtherIncludes()
+    }
+
+    private fun mergeAndCopyLibrary() {
+        if (libraries.count() > 1) {
+            val libsInput = libraries.map { it.get() }
+            val output = builtProductsDirectory.map { it.asFile.resolve(libsInput.last().name) }.get().absolutePath
+
+            runCommand(
+                listOf(
+                    "lipo",
+                    "-create",
+                    "-output", output,
+                ) + libsInput.map { it.absolutePath },
+                logger = logger
+            )
+        } else {
+            fileSystem.copy {
+                it.from(libraries.single())
+                it.into(builtProductsDirectory)
+            }
         }
+    }
+
+    private fun copyInterfaces() {
+        interfaces.forEach { swiftInterface ->
+            fileSystem.copy {
+                it.from(swiftInterface)
+                it.into(builtProductsDirectory)
+                it.includeEmptyDirs = false
+            }
+        }
+    }
+
+    private fun copyOtherIncludes() {
         fileSystem.copy {
             it.from(includeBridgeDirectory)
             it.into(syntheticInterfacesDestinationPath)
         }
+
         fileSystem.copy {
             it.from(includeKotlinRuntimeDirectory)
             it.into(kotlinRuntimeDestinationPath)

@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftEx
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.maybeCreateSwiftExportClasspathResolvableConfiguration
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.BuildSPMSwiftExportPackage
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.GenerateSPMPackageFromSwiftExport
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.MergeStaticLibrariesTask
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.SwiftExportTask
 import org.jetbrains.kotlin.gradle.tasks.dependsOn
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
@@ -37,7 +38,7 @@ internal fun Project.setupCommonSwiftExportPipeline(
     configuration: (
         packageBuild: TaskProvider<BuildSPMSwiftExportPackage>,
         packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
-        staticLibrary: AbstractNativeLibrary,
+        mergeLibrariesTask: TaskProvider<MergeStaticLibrariesTask>
     ) -> TaskProvider<out Task>,
 ): TaskProvider<out Task> {
     val mainCompilation = target.compilations.getByName("main")
@@ -71,8 +72,16 @@ internal fun Project.setupCommonSwiftExportPipeline(
         staticLibrary = staticLibrary,
         packageGenerationTask = packageGenerationTask,
     )
+    val mergeLibrariesTask = registerMergeLibraryTask(
+        buildType = buildType,
+        target = target,
+        taskNamePrefix = taskNamePrefix,
+        staticLibrary = staticLibrary,
+        swiftApiModuleName = swiftApiModuleName,
+        packageBuildTask = packageBuild
+    )
 
-    return configuration(packageBuild, packageGenerationTask, staticLibrary)
+    return configuration(packageBuild, packageGenerationTask, mergeLibrariesTask)
 }
 
 private fun Project.registerSwiftExportRun(
@@ -121,7 +130,7 @@ private fun registerSwiftExportCompilationAndGetBinary(
     swiftExportTask: TaskProvider<SwiftExportTask>,
 ): AbstractNativeLibrary {
     val swiftExportCompilationName = "swiftExportMain"
-    val swiftExportBinary = "swiftExportBinary"
+    val swiftExportBinary = "SwiftExportBinary"
 
     compilations.getOrCreate(
         swiftExportCompilationName,
@@ -206,4 +215,49 @@ private fun Project.registerSPMPackageBuild(
     packageBuild.dependsOn(staticLibrary.linkTaskProvider)
     packageBuild.dependsOn(packageGenerationTask)
     return packageBuild
+}
+
+private fun Project.registerMergeLibraryTask(
+    buildType: NativeBuildType,
+    target: KotlinNativeTarget,
+    taskNamePrefix: String,
+    staticLibrary: AbstractNativeLibrary,
+    swiftApiModuleName: Provider<String>,
+    packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
+): TaskProvider<MergeStaticLibrariesTask> {
+
+    val mergeTaskName = lowerCamelCaseName(
+        taskNamePrefix,
+        "mergeLibraries"
+    )
+
+    val kotlinOutput = staticLibrary.linkTaskProvider.flatMap { it.outputFile }
+    val spmOutput = packageBuildTask.map { it.packageLibraryPath }
+    val libraryName = swiftApiModuleName.map {
+        lowerCamelCaseName(
+            "lib",
+            it,
+            ".a"
+        )
+    }
+
+    val mergeTask = locateOrRegisterTask<MergeStaticLibrariesTask>(mergeTaskName) { task ->
+        task.description = "Merges multiple libraries into one"
+
+        // Input
+        task.libraries.setFrom(kotlinOutput, spmOutput)
+
+        // Output
+        task.library.set(
+            layout.buildDirectory.file(
+                libraryName.map {
+                    "MergedLibraries/${target.name}/${buildType.getName().capitalize()}/$it"
+                }
+            )
+        )
+    }
+
+    mergeTask.dependsOn(staticLibrary.linkTaskProvider)
+    mergeTask.dependsOn(packageBuildTask)
+    return mergeTask
 }

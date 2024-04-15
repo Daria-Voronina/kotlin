@@ -14,8 +14,11 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.*
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.BuildSPMSwiftExportPackage
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.CopySwiftExportIntermediatesForConsumer
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.GenerateSPMPackageFromSwiftExport
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.MergeStaticLibrariesTask
 import org.jetbrains.kotlin.gradle.tasks.dependsOn
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
+import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
+import org.jetbrains.kotlin.gradle.utils.mapToFile
 
 internal fun Project.registerSwiftExportEmbedPipelineTask(
     swiftApiModuleName: Provider<String>,
@@ -28,35 +31,52 @@ internal fun Project.registerSwiftExportEmbedPipelineTask(
         taskNamePrefix = taskNamePrefix,
         target = target,
         buildType = buildType
-    ) { packageBuild, packageGenerationTask, staticLibrary ->
+    ) { packageBuild, packageGenerationTask, mergeLibrariesTask ->
         registerCopyTask(
-            taskNamePrefix = taskNamePrefix,
-            staticLibrary = staticLibrary,
+            buildType = buildType,
             packageGenerationTask = packageGenerationTask,
-            packageBuildTask = packageBuild
+            packageBuildTask = packageBuild,
+            mergeLibrariesTask = mergeLibrariesTask
         )
     }
 }
 
 private fun Project.registerCopyTask(
-    taskNamePrefix: String,
-    staticLibrary: AbstractNativeLibrary,
+    buildType: NativeBuildType,
     packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
     packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
+    mergeLibrariesTask: TaskProvider<MergeStaticLibrariesTask>,
 ): TaskProvider<out Task> {
-    val copyTaskName = taskNamePrefix + "CopySPMIntermediates"
+
+    val configuration = buildType.getName()
+    val copyTaskName = lowerCamelCaseName(
+        "copy",
+        configuration,
+        "SPMIntermediates"
+    )
+
     val copyTask = locateOrRegisterTask<CopySwiftExportIntermediatesForConsumer>(copyTaskName) { task ->
         task.group = BasePlugin.BUILD_GROUP
-        task.description = "Copy $taskNamePrefix SPM intermediates"
+        task.description = "Copy ${configuration.capitalize()} SPM intermediates"
 
         // Input
         task.includeBridgeDirectory.set(layout.file(packageGenerationTask.map { it.headerBridgeIncludePath }))
         task.includeKotlinRuntimeDirectory.set(layout.file(packageGenerationTask.map { it.kotlinRuntimeIncludePath }))
-        task.kotlinLibraryPath.set(layout.file(staticLibrary.linkTaskProvider.flatMap { it.outputFile }))
-        task.packageLibraryPath.set(layout.file(packageBuildTask.map { it.packageLibraryPath }))
-        task.packageInterfacesPath.set(layout.file(packageBuildTask.map { it.interfacesPath }))
     }
+
+    copyTask.configure { task ->
+        task.addLibrary(
+            mergeLibrariesTask.flatMap { it.library }.mapToFile()
+        )
+
+        task.addInterface(
+            packageBuildTask.map { it.interfacesPath }
+        )
+    }
+
     copyTask.dependsOn(packageBuildTask)
+    copyTask.dependsOn(mergeLibrariesTask)
+
     return copyTask
 }
 
