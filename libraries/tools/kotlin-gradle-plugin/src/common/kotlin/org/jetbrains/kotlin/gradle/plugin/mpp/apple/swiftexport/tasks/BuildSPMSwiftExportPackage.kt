@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.gradle.utils.relativeOrAbsolute
 import org.jetbrains.kotlin.gradle.utils.runCommand
 import org.jetbrains.kotlin.incremental.createDirectory
 import org.jetbrains.kotlin.konan.target.Architecture
+import org.jetbrains.kotlin.konan.target.HostManager
 import org.jetbrains.kotlin.konan.target.KonanTarget
 import java.io.File
 import javax.inject.Inject
@@ -29,6 +30,9 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
     providerFactory: ProviderFactory,
     objectsFactory: ObjectFactory,
 ) : DefaultTask() {
+    init {
+        onlyIf { HostManager.hostIsMac }
+    }
 
     @get:Input
     abstract val swiftApiModuleName: Property<String>
@@ -59,6 +63,16 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
 
     @get:Internal
     abstract val packageRootDirectory: DirectoryProperty
+
+    @get:Internal
+    val architecture: Property<String> = objectsFactory.property<String>().convention(
+        target.map { it.appleArchitecture() }
+    )
+
+    @get:Internal
+    val platform: Property<String> = objectsFactory.property<String>().convention(
+        target.map { it.applePlatform() }
+    )
 
     @get:Internal
     internal val interfacesPath: File
@@ -99,7 +113,7 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
 
         val buildArguments = mapOf(
             "ONLY_ACTIVE_ARCH" to onlyActiveArch.map { it.appleBool() }.get(),
-            "ARCHS" to target.map { it.appleArchitecture() }.get(),
+            "ARCHS" to architecture.get(),
             "CONFIGURATION" to configuration.get(),
         )
 
@@ -123,7 +137,7 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
     private fun packObjectFilesIntoLibrary() {
         val objectFilePaths = objectFilesPath.listFilesOrEmpty().filter {
             it.extension == "o"
-        }.map { it.relativeOrAbsolute(packageRootDirectoryPath) }
+        }.map { it.absolutePath }
 
         if (objectFilePaths.isEmpty()) {
             error("Synthetic package build didn't produce any object files")
@@ -134,12 +148,9 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
         runCommand(
             listOf(
                 "libtool", "-static",
-                "-o", packageLibraryPath.relativeOrAbsolute(packageRootDirectoryPath),
+                "-o", packageLibraryPath.absolutePath,
             ) + objectFilePaths,
-            logger = logger,
-            processConfiguration = {
-                directory(packageRootDirectoryPath)
-            }
+            logger = logger
         )
     }
 
@@ -147,7 +158,7 @@ internal abstract class BuildSPMSwiftExportPackage @Inject constructor(
         val deviceId: String? = targetDeviceIdentifier.orNull
         if (deviceId != null) return "id=$deviceId"
 
-        val platformName = target.map { it.applePlatform() }.get() ?: error("Missing platform name")
+        val platformName = platform.get() ?: error("Missing platform name")
         val platform = mapOf(
             "iphonesimulator" to "iOS Simulator",
             "iphoneos" to "iOS",

@@ -9,13 +9,13 @@ import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.tasks.TaskProvider
 import org.jetbrains.kotlin.gradle.plugin.mpp.Framework
-import org.jetbrains.kotlin.gradle.plugin.mpp.enabledOnCurrentHost
+import org.jetbrains.kotlin.gradle.plugin.mpp.enabledOnCurrentHostForBinariesCompilation
 import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
 
 internal fun Project.registerSwiftExportEmbedTask(
     framework: Framework,
 ): TaskProvider<out Task>? {
-    if (!framework.konanTarget.family.isAppleFamily || !framework.konanTarget.enabledOnCurrentHost) return null
+    if (!framework.konanTarget.family.isAppleFamily || !framework.konanTarget.enabledOnCurrentHostForBinariesCompilation()) return null
     return registerSwiftExportEmbedPipelineTask(
         swiftApiModuleName = framework.baseNameProvider,
         taskNamePrefix = framework.taskNamePrefix,
@@ -27,7 +27,7 @@ internal fun Project.registerSwiftExportEmbedTask(
 internal fun Project.registerSwiftExportFrameworkTask(
     framework: Framework,
 ): TaskProvider<out Task>? {
-    if (!framework.konanTarget.family.isAppleFamily || !framework.konanTarget.enabledOnCurrentHost) return null
+    if (!framework.konanTarget.family.isAppleFamily || !framework.konanTarget.enabledOnCurrentHostForBinariesCompilation()) return null
     return registerSwiftExportFrameworkPipelineTask(
         swiftApiModuleName = framework.baseNameProvider,
         taskNamePrefix = framework.taskNamePrefix,

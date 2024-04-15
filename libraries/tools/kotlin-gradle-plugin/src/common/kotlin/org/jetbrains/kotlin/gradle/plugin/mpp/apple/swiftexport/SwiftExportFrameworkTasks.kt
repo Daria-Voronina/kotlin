@@ -12,15 +12,18 @@ import org.gradle.api.tasks.TaskProvider
 import org.jetbrains.kotlin.gradle.plugin.mpp.AbstractNativeLibrary
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.SwiftExportFrameworkTask
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.ModuleDefinition
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.SwiftExportConstants
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.*
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.BuildSPMSwiftExportPackage
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.GenerateSPMPackageFromSwiftExport
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.HeaderDefinition
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.LibraryDefinition
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.tasks.SwiftExportFrameworkTask
 import org.jetbrains.kotlin.gradle.tasks.dependsOn
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
 import org.jetbrains.kotlin.gradle.utils.konanDistribution
 import org.jetbrains.kotlin.gradle.utils.lowerCamelCaseName
+import org.jetbrains.kotlin.gradle.utils.mapToFile
 import org.jetbrains.kotlin.konan.target.Distribution
 
 internal fun Project.registerSwiftExportFrameworkPipelineTask(
@@ -47,19 +50,66 @@ internal fun Project.registerSwiftExportFrameworkPipelineTask(
 
         registerProduceSwiftExportFrameworkTask(
             buildType = buildType,
-            staticLibrary = staticLibrary,
+            target = target,
             swiftApiModuleName = swiftApiModuleName,
             packageGenerationTask = packageGenerationTask,
+            mergeLibrariesTask = mergeLibrariesTask,
             packageBuildTask = packageBuild
         )
     }
 }
 
-private fun Project.registerProduceSwiftExportFrameworkTask(
+private fun Project.registerMergeLibraryTask(
     buildType: NativeBuildType,
+    target: KotlinNativeTarget,
+    taskNamePrefix: String,
     staticLibrary: AbstractNativeLibrary,
     swiftApiModuleName: Provider<String>,
+    packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
+): TaskProvider<MergeStaticLibrariesTask> {
+
+    val mergeTaskName = lowerCamelCaseName(
+        taskNamePrefix,
+        "mergeLibraries"
+    )
+
+    val kotlinOutput = staticLibrary.linkTaskProvider.flatMap { it.outputFile }
+    val spmOutput = packageBuildTask.map { it.packageLibraryPath }
+    val libraryName = swiftApiModuleName.map {
+        lowerCamelCaseName(
+            "lib",
+            it,
+            ".a"
+        )
+    }
+
+    val mergeTask = locateOrRegisterTask<MergeStaticLibrariesTask>(mergeTaskName) { task ->
+        task.description = "Merges multiple libraries into one"
+
+        // Input
+        task.libraries.setFrom(kotlinOutput, spmOutput)
+
+        // Output
+        task.library.set(
+            layout.buildDirectory.file(
+                libraryName.map {
+                    "MergedLibraries/${target.name}/${buildType.getName().capitalize()}/$it"
+                }
+            )
+        )
+    }
+
+    mergeTask.dependsOn(staticLibrary.linkTaskProvider)
+    mergeTask.dependsOn(packageBuildTask)
+    return mergeTask
+}
+
+private fun Project.registerProduceSwiftExportFrameworkTask(
+    buildType: NativeBuildType,
+    target: KotlinNativeTarget,
+    swiftApiModuleName: Provider<String>,
     packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
+    mergeLibrariesTask: TaskProvider<MergeStaticLibrariesTask>,
     packageBuildTask: TaskProvider<BuildSPMSwiftExportPackage>,
 ): TaskProvider<out Task> {
 
@@ -69,45 +119,50 @@ private fun Project.registerProduceSwiftExportFrameworkTask(
         "swiftExportFramework"
     )
 
+    val library = mergeLibrariesTask.flatMap { it.library.mapToFile() }
+    val swiftModule = packageBuildTask.map { it.swiftModulePath }
+    val headerDefinition = packageHeaderDefinitions(packageGenerationTask)
+
     val frameworkTask = locateOrRegisterTask<SwiftExportFrameworkTask>(frameworkTaskName) { task ->
         task.description = "Creates Swift Export Apple Framework"
 
         // Input
         task.binaryName.set(swiftApiModuleName)
-
-        task.libraries.from(
-            staticLibrary.linkTaskProvider.flatMap { it.outputFile },
-            packageBuildTask.map { it.packageLibraryPath }
-        )
-
-        task.swiftModule.set(
-            layout.dir(
-                packageBuildTask.map { it.swiftModulePath }
-            )
-        )
-
-        task.headerDefinitions.set(packageModuleDefinitions(packageGenerationTask))
+        task.headerDefinitions.set(headerDefinition)
 
         // Output
         task.frameworkRoot.set(layout.buildDirectory.dir("SwiftExportFramework/${buildType.getName().capitalize()}"))
+    }.also {
+        it.configure { task ->
+            task.library(
+                provider {
+                    LibraryDefinition(
+                        target.name,
+                        library.get(),
+                        swiftModule.get(),
+                    )
+                },
+                target.konanTarget
+            )
+        }
     }
 
-    frameworkTask.dependsOn(staticLibrary.linkTaskProvider)
+    frameworkTask.dependsOn(mergeLibrariesTask)
     frameworkTask.dependsOn(packageBuildTask)
 
     return frameworkTask
 }
 
-private fun Project.packageModuleDefinitions(
+private fun Project.packageHeaderDefinitions(
     packageGenerationTask: TaskProvider<GenerateSPMPackageFromSwiftExport>,
-): Provider<List<ModuleDefinition>> {
+): Provider<List<HeaderDefinition>> {
     return packageGenerationTask.map { packageTask ->
-        val swiftExportModule = ModuleDefinition(
+        val swiftExportModule = HeaderDefinition(
             packageTask.headerBridgeModuleName.get(),
             packageTask.headerBridgePath.asFile.get()
         )
 
-        val kotlinModule = ModuleDefinition(
+        val kotlinModule = HeaderDefinition(
             SwiftExportConstants.KOTLIN_RUNTIME,
             file(Distribution(konanDistribution.root.absolutePath).kotlinRuntimeForSwiftHeader)
         )

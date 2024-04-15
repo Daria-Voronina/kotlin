@@ -16,9 +16,13 @@ import org.jetbrains.kotlin.gradle.utils.appendLine
 import org.jetbrains.kotlin.gradle.utils.getFile
 import org.jetbrains.kotlin.incremental.createDirectory
 import org.jetbrains.kotlin.incremental.deleteRecursivelyOrThrow
+import org.jetbrains.kotlin.konan.target.HostManager
 
 @DisableCachingByDefault(because = "Swift Export is experimental, so no caching for now")
 internal abstract class GenerateSPMPackageFromSwiftExport : DefaultTask() {
+    init {
+        onlyIf { HostManager.hostIsMac }
+    }
 
     @get:Input
     abstract val swiftApiModuleName: Property<String>
