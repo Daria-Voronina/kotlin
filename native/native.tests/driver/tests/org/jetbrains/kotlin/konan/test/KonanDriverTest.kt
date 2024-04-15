@@ -28,13 +28,15 @@ import org.jetbrains.kotlin.native.executors.runProcess
 import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.extension.ExtendWith
 import java.io.File
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Duration
+
+private const val REPETITION_COUNT = 50
 
 @Tag("driver")
 @TestDataPath("\$PROJECT_ROOT")
@@ -47,7 +49,7 @@ class KonanDriverTest : AbstractNativeSimpleTest() {
     private val testSuiteDir = File("native/native.tests/driver/testData")
     private val source = testSuiteDir.resolve("driver0.kt")
 
-    @Test
+    @RepeatedTest(REPETITION_COUNT)
     fun testLLVMVariantDev() {
         logSystemMemoryUsage("START testLLVMVariantDev")
         // No need to test with different GC schedulers
@@ -86,7 +88,7 @@ class KonanDriverTest : AbstractNativeSimpleTest() {
         return compilationResult
     }
 
-    @Test
+    @RepeatedTest(REPETITION_COUNT)
     fun testDriverProducesRunnableBinaries() {
         logSystemMemoryUsage("START testDriverProducesRunnableBinaries")
         Assumptions.assumeFalse(HostManager.hostIsMingw &&
@@ -116,7 +118,7 @@ class KonanDriverTest : AbstractNativeSimpleTest() {
         logSystemMemoryUsage("FINISH testDriverProducesRunnableBinaries")
     }
 
-    @Test
+    @RepeatedTest(REPETITION_COUNT)
     fun testDriverVersion() {
         logSystemMemoryUsage("START testDriverVersion")
         Assumptions.assumeFalse(HostManager.hostIsMingw &&
@@ -144,7 +146,7 @@ class KonanDriverTest : AbstractNativeSimpleTest() {
         logSystemMemoryUsage("FINISH testDriverVersion")
     }
 
-    @Test
+    @RepeatedTest(REPETITION_COUNT)
     fun testOverrideKonanProperties() {
         Assumptions.assumeFalse(HostManager.hostIsMac)
         logSystemMemoryUsage("START testOverrideKonanProperties")
