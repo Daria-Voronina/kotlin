@@ -156,9 +156,6 @@ abstract class FakeOverrideBuilderStrategy(
      */
     protected abstract fun linkPropertyFakeOverride(property: IrPropertyWithLateBinding, manglerCompatibleMode: Boolean)
 
-    // TODO: add KDoc
-    open fun needGenerateBackingFieldForFakeOverrideProperty(property: IrPropertyWithLateBinding): Boolean = false
-
     abstract class BindToPrivateSymbols(friendModules: Map<String, Collection<String>>) : FakeOverrideBuilderStrategy(
         friendModules = friendModules,
         unimplementedOverridesStrategy = IrUnimplementedOverridesStrategy.ProcessAsFakeOverrides
