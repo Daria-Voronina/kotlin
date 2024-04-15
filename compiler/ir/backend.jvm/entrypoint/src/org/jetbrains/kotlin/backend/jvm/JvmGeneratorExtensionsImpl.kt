@@ -11,15 +11,16 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.FilteredAnnotations
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.ir.ObsoleteDescriptorBasedAPI
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
-import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationOrigin
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationParent
+import org.jetbrains.kotlin.ir.declarations.IrFactory
 import org.jetbrains.kotlin.ir.declarations.impl.IrFactoryImpl
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 import org.jetbrains.kotlin.ir.expressions.IrDelegatingConstructorCall
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstructorCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrDelegatingConstructorCallImpl
-import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
-import org.jetbrains.kotlin.ir.util.*
+import org.jetbrains.kotlin.ir.util.DeclarationStubGenerator
+import org.jetbrains.kotlin.ir.util.createParameterDeclarations
 import org.jetbrains.kotlin.load.java.JvmAnnotationNames
 import org.jetbrains.kotlin.load.java.descriptors.JavaCallableMemberDescriptor
 import org.jetbrains.kotlin.load.java.descriptors.JavaClassDescriptor
@@ -168,29 +169,19 @@ open class JvmGeneratorExtensionsImpl(
     private val specialAnnotations = JvmIrSpecialAnnotationSymbolProvider(IrFactoryImpl)
 
     override val enhancedNullabilityAnnotationCall: IrConstructorCall =
-        specialAnnotations.enhancedNullabilityAnnotation.toConstructorCall()
+        specialAnnotations.enhancedNullabilityAnnotationCall
 
     override val flexibleNullabilityAnnotationCall: IrConstructorCall =
-        specialAnnotations.flexibleNullabilityAnnotation.toConstructorCall()
+        specialAnnotations.flexibleNullabilityAnnotationCall
 
     override val flexibleMutabilityAnnotationCall: IrConstructorCall =
-        specialAnnotations.flexibleMutabilityAnnotation.toConstructorCall()
+        specialAnnotations.flexibleMutabilityAnnotationCall
 
     override val flexibleArrayElementVarianceAnnotationCall: IrConstructorCall =
-        specialAnnotations.flexibleArrayElementVarianceAnnotation.toConstructorCall()
+        specialAnnotations.flexibleArrayElementVarianceAnnotationCall
 
     override val rawTypeAnnotationCall: IrConstructorCall =
-        specialAnnotations.rawTypeAnnotation.toConstructorCall()
-
-    private fun IrClassSymbol.toConstructorCall(): IrConstructorCall =
-        owner.constructors.single().let {
-            IrConstructorCallImpl.fromSymbolOwner(
-                UNDEFINED_OFFSET,
-                UNDEFINED_OFFSET,
-                it.constructedClassType,
-                it.symbol
-            )
-        }
+        specialAnnotations.rawTypeAnnotationCall
 
     override fun unwrapSyntheticJavaProperty(descriptor: PropertyDescriptor): Pair<FunctionDescriptor, FunctionDescriptor?>? {
         if (descriptor is SyntheticJavaPropertyDescriptor) {

@@ -73,7 +73,7 @@ private class IrJvmFlexibleTypeImpl(
                 arguments = listOf(makeTypeProjection(irType.getArrayElementType(), Variance.INVARIANT))
             }
             if (raw) {
-                annotations = listOf(specialAnnotations.rawTypeAnnotation.createAnnotation())
+                annotations = listOf(specialAnnotations.rawTypeAnnotationCall)
             }
         }
 
@@ -111,11 +111,6 @@ private class IrJvmFlexibleTypeImpl(
             is IrStarProjection -> error("Star projection is not possible for the argument of Array type: ${irType.render()}")
             null -> error("Flexible variance is only possible for Array types: ${irType.render()}")
         }
-
-    private fun IrClassSymbol.createAnnotation(): IrConstructorCall =
-        IrConstructorCallImpl.fromSymbolOwner(
-            UNDEFINED_OFFSET, UNDEFINED_OFFSET, owner.thisReceiver!!.type, owner.constructors.single<IrConstructor>().symbol
-        )
 }
 
 fun IrType.isWithFlexibleNullability(): Boolean =
