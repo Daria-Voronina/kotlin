@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.expressions.*
-import org.jetbrains.kotlin.fir.resolve.fullyExpandedClassFromContextTypeIfAny
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedClassFromExpectedTypeIfAny
 import org.jetbrains.kotlin.fir.resolve.ResolutionMode
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.calls.ResolutionContext
@@ -87,7 +87,7 @@ abstract class FirAbstractBodyResolveTransformerDispatcher(
         } else {
             val contextScope = when {
                 session.languageVersionSettings.supportsFeature(LanguageFeature.ExpectedTypeGuidedResolution) ->
-                    data.fullyExpandedClassFromContextTypeIfAny(components, session)?.staticScope(session, scopeSession)
+                    data.fullyExpandedClassFromExpectedTypeIfAny(components, session)?.staticScope(session, scopeSession)
                 else -> null
             }
             typeResolverTransformer.withFile(context.file) {

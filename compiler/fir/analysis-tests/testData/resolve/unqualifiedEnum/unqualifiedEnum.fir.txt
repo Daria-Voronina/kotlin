@@ -35,13 +35,13 @@ FILE: unqualifiedEnum.kt
     }
     public final fun shouldNotWork(s: R|test/Sample|): R|kotlin/Int| {
         ^shouldNotWork when () {
-            ==(R|<local>/s|, Q|test/Sample|.R|test/Sample.FIRST|) ->  {
+            ==(R|<local>/s|, <Unresolved name: FIRST>#) ->  {
                 Int(1)
             }
-            ==(R|<local>/s|, Q|test/Sample|.R|test/Sample.SECOND|) ->  {
+            ==(R|<local>/s|, <Unresolved name: SECOND>#) ->  {
                 Int(2)
             }
-            ==(R|<local>/s|, Q|test/Sample|.R|test/Sample.THIRD|) ->  {
+            ==(R|<local>/s|, <Unresolved name: THIRD>#) ->  {
                 Int(3)
             }
             else ->  {

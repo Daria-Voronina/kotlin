@@ -22,7 +22,7 @@ import org.jetbrains.kotlin.fir.resolve.BodyResolveComponents
 import org.jetbrains.kotlin.fir.resolve.DoubleColonLHS
 import org.jetbrains.kotlin.fir.resolve.ResolutionMode
 import org.jetbrains.kotlin.fir.resolve.calls.*
-import org.jetbrains.kotlin.fir.resolve.fullyExpandedClassFromContextTypeIfAny
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedClassFromExpectedTypeIfAny
 import org.jetbrains.kotlin.fir.resolve.setTypeOfQualifier
 import org.jetbrains.kotlin.fir.scopes.FirScope
 import org.jetbrains.kotlin.fir.scopes.impl.FirWhenSubjectImportingScope
@@ -189,7 +189,7 @@ internal abstract class FirBaseTowerResolveTask(
         }
 
         if (session.languageVersionSettings.supportsFeature(LanguageFeature.ExpectedTypeGuidedResolution)) {
-            val contextClass = resolutionMode?.fullyExpandedClassFromContextTypeIfAny(components, session)
+            val contextClass = resolutionMode?.fullyExpandedClassFromExpectedTypeIfAny(components, session)
             val contextScope = contextClass?.staticScope(session, components.scopeSession)
             if (contextScope != null) {
                 onScope(contextScope, contextClass.symbol, TowerGroup.QualifierOrClassifier)

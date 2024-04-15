@@ -875,10 +875,8 @@ open class FirExpressionsResolveTransformer(transformer: FirAbstractBodyResolveT
         val leftArgumentTransformed: FirExpression = arguments[0].transform(transformer, ResolutionMode.ContextIndependent)
         dataFlowAnalyzer.exitEqualityOperatorLhs()
         val leftArgumentMode = when {
-            leftArgumentTransformed.isResolved -> withExpectedAndContextType(
-                builtinTypes.nullableAnyType,
-                leftArgumentTransformed.resolvedType.toFirResolvedTypeRef(leftArgumentTransformed.source)
-            )
+            leftArgumentTransformed is FirWhenSubjectExpression && leftArgumentTransformed.isResolved ->
+                withExpectedType(leftArgumentTransformed.resolvedType.toFirResolvedTypeRef(leftArgumentTransformed.source))
             else -> withExpectedType(builtinTypes.nullableAnyType)
         }
         val rightArgumentTransformed: FirExpression = arguments[1].transform(transformer, leftArgumentMode)
