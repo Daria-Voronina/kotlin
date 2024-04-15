@@ -2,6 +2,12 @@ import KotlinBridges
 import KotlinRuntime
 
 public typealias RegularInteger = Swift.Int32
+public typealias DefaultInteger = main.RegularInteger
+public func increment(
+    int: main.DefaultInteger
+) -> main.RegularInteger {
+    fatalError()
+}
 public extension main.typealiases.inner {
     public typealias LargeInteger = Swift.Int64
     public typealias Foo = main.typealiases.Foo
