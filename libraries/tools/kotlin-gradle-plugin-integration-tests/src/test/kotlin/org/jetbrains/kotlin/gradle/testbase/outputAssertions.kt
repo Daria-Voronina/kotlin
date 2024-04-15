@@ -11,6 +11,7 @@ import org.gradle.testkit.runner.BuildResult
 import org.gradle.util.GradleVersion
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Asserts Gradle output contains [expectedSubString] string.
@@ -252,7 +253,7 @@ fun findParameterInOutput(name: String, output: String): String? =
 fun BuildResult.assertCompilerArgument(
     taskPath: String,
     expectedArgument: String,
-    logLevel: LogLevel = LogLevel.DEBUG
+    logLevel: LogLevel = LogLevel.DEBUG,
 ) {
     val taskOutput = getOutputForTask(taskPath, logLevel)
     val compilerArguments = taskOutput.lines().first {
@@ -345,9 +346,9 @@ fun CommandLineArguments.assertCommandLineArgumentsDoNotContain(
     vararg expectedArgs: String,
 ) {
     expectedArgs.forEach {
-        assert(!args.contains(it)) {
+        assert(!actualArgs.contains(it)) {
             this.buildResult.printBuildOutput()
-            "There is unexpected ${it} in actual command line arguments are: ${args}"
+            "There is unexpected ${it} in actual command line arguments are: ${actualArgs}"
         }
     }
 }
@@ -362,9 +363,9 @@ fun CommandLineArguments.assertCommandLineArgumentsContain(
     vararg expectedArgs: String,
 ) {
     expectedArgs.forEach {
-        assert(args.contains(it)) {
+        assert(actualArgs.contains(it)) {
             this.buildResult.printBuildOutput()
-            "There is no ${it} in actual command line arguments are: ${args}"
+            "There is no ${it} in actual command line arguments are: ${actualArgs}"
         }
     }
 }
@@ -378,11 +379,31 @@ fun CommandLineArguments.assertCommandLineArgumentsContain(
 fun CommandLineArguments.assertCommandLineArgumentsContainSequentially(
     vararg expectedArgs: String,
 ) {
-    expectedArgs.forEach {
-        assert(expectedArgs.isNotEmpty() && Collections.indexOfSubList(args, expectedArgs.toList()) != -1) {
-            this.buildResult.printBuildOutput()
-            "There is no sequential arguments ${it} in actual command line arguments are: ${args}"
-        }
+    assertTrue(expectedArgs.isNotEmpty(), "Expect args must not be empty")
+
+    val (matchedArgs, missingArgs) = expectedArgs.partition { expected -> expected in actualArgs }
+
+    try {
+        assertTrue(
+            missingArgs.isEmpty(),
+            """
+            Expected that actual command line arguments contained ${matchedArgs.size}, but ${missingArgs.size} are missing.
+            Actual args:  $actualArgs
+            Matched args: $matchedArgs
+            Missing args: $missingArgs
+            """.trimIndent()
+        )
+        assertTrue(
+            Collections.indexOfSubList(actualArgs, expectedArgs.toList()) != -1,
+            """
+            Actual command line arguments do not contain expected args sequentially.
+            Actual args:  $actualArgs
+            Matched args: $matchedArgs
+            Missing args: $missingArgs
+            """.trimIndent()
+        )
+    } finally {
+        buildResult.printBuildOutput()
     }
 }
 
@@ -424,7 +445,7 @@ fun BuildResult.assertOutputContainsNativeFrameworkVariant(variantName: String, 
  */
 fun CommandLineArguments.assertNoDuplicates() {
     // -library can be duplicated as it represent compile dependencies
-    val argsWithoutLibraries = args.filter { it != "-library" }
+    val argsWithoutLibraries = actualArgs.filter { it != "-library" }
 
     assertEquals(
         argsWithoutLibraries.joinToString("\n"),
@@ -438,4 +459,3 @@ private fun BuildResult.extractNativeCustomEnvironment(taskPath: String, toolNam
         val (key, value) = it.split("=")
         key.trim() to value.trim()
     }.toMap()
-

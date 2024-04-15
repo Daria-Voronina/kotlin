@@ -48,32 +48,22 @@ annotation class GradleTestVersions(
 annotation class GradleTest
 
 inline fun <reified T : Annotation> findAnnotation(context: ExtensionContext): T {
-    var nextSuperclass: Class<*>? = context.testClass.get().superclass
-    val superClassSequence = if (nextSuperclass != null) {
-        generateSequence {
-            val currentSuperclass = nextSuperclass
-            nextSuperclass = nextSuperclass?.superclass
-            currentSuperclass
-        }
-    } else {
-        emptySequence()
-    }
+    val superClasses = generateSequence(context.testClass.orElse(null)?.superclass) { it.superclass }
 
     return sequenceOf(
         context.testMethod.orElse(null),
         context.testClass.orElse(null)
     )
         .filterNotNull()
-        .plus(superClassSequence)
+        .plus(superClasses)
         .mapNotNull { declaration ->
             declaration.annotations.firstOrNull { it is T }
         }
         .firstOrNull() as T?
         ?: context.testMethod.get().annotations
-            .mapNotNull { annotation ->
+            .firstNotNullOf { annotation ->
                 annotation.annotationClass.annotations.firstOrNull { it is T }
-            }
-            .first() as T
+            } as T
 }
 
 open class GradleArgumentsProvider : ArgumentsProvider {

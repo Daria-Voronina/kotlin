@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.gradle.testbase
 import org.gradle.api.logging.LogLevel
 import org.gradle.testkit.runner.BuildResult
 import org.intellij.lang.annotations.Language
+import kotlin.test.fail
 
 @Language("RegExp")
 private fun taskOutputRegexForDebugLog(
@@ -56,29 +57,31 @@ fun BuildResult.getOutputForTask(taskPath: String, logLevel: LogLevel = LogLevel
  *
  * @throws IllegalStateException if the specified task path does not match any tasks in the build.
  */
-fun getOutputForTask(taskPath: String, output: String, logLevel: LogLevel = LogLevel.DEBUG): String = (
-        when (logLevel) {
-            LogLevel.INFO -> taskOutputRegexForInfoLog(taskPath)
-            LogLevel.DEBUG -> taskOutputRegexForDebugLog(taskPath)
-            else -> throw throw IllegalStateException("Unsupported log lever for task output was given: $logLevel")
-        })
-    .findAll(output)
-    .map { it.groupValues[1] }
-    .joinToString(System.lineSeparator())
-    .ifEmpty {
-        error(
-            """
-            Could not find output for task $taskPath.
-            =================
-            Build output is:
-            $output 
-            =================     
-            """.trimIndent()
-        )
+fun getOutputForTask(taskPath: String, output: String, logLevel: LogLevel = LogLevel.DEBUG): String {
+    val logRegex = when (logLevel) {
+        LogLevel.INFO -> taskOutputRegexForInfoLog(taskPath)
+        LogLevel.DEBUG -> taskOutputRegexForDebugLog(taskPath)
+        else -> throw throw IllegalStateException("Unsupported log lever for task output was given: $logLevel")
     }
 
+    return logRegex.findAll(output)
+        .map { it.groupValues[1] }
+        .joinToString(System.lineSeparator())
+        .ifEmpty {
+            println(
+                """
+                =================
+                Build output is:
+                $output 
+                =================     
+                """.trimIndent()
+            )
+            fail("Could not find output for task $taskPath")
+        }
+}
+
 class CommandLineArguments(
-    val args: List<String>,
+    val actualArgs: List<String>,
     val buildResult: BuildResult,
 )
 

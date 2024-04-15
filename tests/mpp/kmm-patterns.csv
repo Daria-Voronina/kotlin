@@ -16,3 +16,4 @@ com.jetbrains.mpp.versions*, include
 *MultiplatformGradleIT*, include
 *KotlinProjectIT*, include
 *NewMultiplatformIT*, include
+*NewMultiplatform2IT*, include

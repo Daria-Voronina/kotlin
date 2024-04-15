@@ -8,27 +8,26 @@ buildscript {
 	}
 }
 
-apply plugin: 'kotlin-multiplatform'
-
-repositories {
-    mavenLocal()
-    mavenCentral()
-    // NB: Build of this module depends on 'sample-lib' publication. You need to add the local
-    // repository where 'sample-lib' artifacts are published.
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
 }
+
+//repositories {
+//    mavenLocal()
+//    mavenCentral()
+//    // NB: Build of this module depends on 'sample-lib' publication. You need to add the local
+//    // repository where 'sample-lib' artifacts are published.
+//}
 
 kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation 'com.example:sample-lib:1.0'
+                implementation("com.example:sample-lib:1.0")
             }
         }
         allJvm {
             dependsOn commonMain
-            dependencies {
-                implementation 'org.jetbrains.kotlin:kotlin-stdlib'
-            }
         }
         jvm6Main {
             dependsOn allJvm
@@ -39,17 +38,15 @@ kotlin {
                 implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
             }
         }
-        nodeJsMain {
-            dependencies {
-                implementation 'org.jetbrains.kotlin:kotlin-stdlib-js'
-            }
-        }
+//        nodeJsMain {
+//            dependencies {
+//                implementation 'org.jetbrains.kotlin:kotlin-stdlib-js'
+//            }
+//        }
     }
 
     js('nodeJs') {
-        nodejs {
-
-        }
+        nodejs { }
     }
 
     wasmJs()
@@ -76,7 +73,7 @@ kotlin {
             binaries.executable("main", [DEBUG]) {
                 entryPoint = "com.example.app.native.main"
             }
-            
+
             binaries.all {
                 // Check that linker options are correctly passed to the compiler.
                 linkerOpts = ['-L.']
@@ -86,7 +83,7 @@ kotlin {
 }
 
 tasks.register("resolveRuntimeDependencies", DefaultTask) {
-    doFirst { 
+    doFirst {
         // KT-26301
         def configName = kotlin.targets.jvm6.compilations.main.runtimeDependencyConfigurationName
         configurations[configName].resolve()

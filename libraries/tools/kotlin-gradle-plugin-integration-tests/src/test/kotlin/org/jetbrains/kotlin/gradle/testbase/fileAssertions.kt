@@ -70,7 +70,7 @@ fun GradleProject.assertFileInProjectNotExists(
 
 fun assertFileNotExists(
     pathToFile: Path,
-    message: String = "File '${pathToFile}' exists!"
+    message: String = "File '${pathToFile}' exists!",
 ) {
     assert(!Files.exists(pathToFile)) {
         message
@@ -262,19 +262,21 @@ fun assertFilesCombinedContains(
 fun assertFileDoesNotContain(
     file: Path,
     vararg unexpectedText: String,
+    message: String? = null,
 ) {
     assertFileExists(file)
     val text = file.readText()
     val textInTheFile = unexpectedText.filter { text.contains(it) }
     assert(textInTheFile.isEmpty()) {
         """
+        |${message ?: ""}
         |$file contains lines which it should not contain:
         |${textInTheFile.joinToString(separator = "\n")}
         |
         |actual file content:
-        |$text"
-        |       
-        """.trimMargin()
+        |$text
+        |
+        """.trimMargin().trimStart()
     }
 }
 
@@ -347,7 +349,7 @@ fun assertGradleVariant(gradleModuleFile: Path, variantName: String, code: Gradl
 }
 
 fun Path.assertZipArchiveContainsFilesOnce(
-    fileNames: List<String>
+    fileNames: List<String>,
 ) {
     ZipFile(toFile()).use { zip ->
         fileNames.forEach { fileName ->

@@ -8,12 +8,12 @@ package org.jetbrains.kotlin.gradle
 import org.junit.Test
 import kotlin.test.assertTrue
 
-/**
- * Exists so job on CI will not fail with "no tests found" error.
- */
-class FakeTestIT : BaseGradleIT() {
-    @Test
-    fun name() {
-        assertTrue(1 == 1)
-    }
-}
+///**
+// * Exists so job on CI will not fail with "no tests found" error.
+// */
+//class FakeTestIT : BaseGradleIT() {
+//    @Test
+//    fun name() {
+//        assertTrue(1 == 1)
+//    }
+//}

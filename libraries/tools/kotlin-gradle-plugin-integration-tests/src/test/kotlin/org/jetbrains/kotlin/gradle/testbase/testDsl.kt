@@ -984,4 +984,5 @@ sealed interface DependencyManagement {
 /**
  * Resolves the temporary local repository path for the test with specified Gradle version.
  */
-fun KGPBaseTest.defaultLocalRepo(gradleVersion: GradleVersion) = workingDir.resolve(gradleVersion.version).resolve("repo")
+fun KGPBaseTest.defaultLocalRepo(gradleVersion: GradleVersion): Path =
+    workingDir.resolve(gradleVersion.version).resolve("repo")

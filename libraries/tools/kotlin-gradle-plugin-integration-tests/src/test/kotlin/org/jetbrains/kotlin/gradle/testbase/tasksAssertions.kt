@@ -17,11 +17,11 @@ import kotlin.test.assertNotNull
  * are not considered 'executed').
  */
 fun BuildResult.assertTasksAreNotInTaskGraph(vararg taskPaths: String) {
-    val presentTasks = taskPaths.filter { task(it) != null }
+    val presentTasks = taskPaths.mapNotNull { task(it) }
     assert(presentTasks.isEmpty()) {
         printBuildOutput()
         val allTaskPaths = taskPaths.joinToString(prefix = "[", postfix = "]")
-        "Tasks $allTaskPaths shouldn't be present in the task graph, but $presentTasks were present"
+        "Tasks $allTaskPaths shouldn't be present in the task graph, but found ${presentTasks.joinToString { "${it.path} (${it.outcome})" }}"
     }
 }
 

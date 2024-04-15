@@ -5,8 +5,15 @@
 
 package org.jetbrains.kotlin.gradle.testbase
 
-import org.junit.jupiter.api.extension.*
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.ExtensionContext
+import org.junit.jupiter.api.extension.InvocationInterceptor
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext
+import org.junit.platform.commons.support.AnnotationSupport.findAnnotation
+import java.lang.reflect.AnnotatedElement
 import java.lang.reflect.Method
+import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 /**
  * Extension for JUnit 5 tests checking that only one test tag is applied to the test method.
@@ -19,21 +26,16 @@ import java.lang.reflect.Method
 annotation class TagsCountValidator
 
 class TagsCountValidatorInterceptor : InvocationInterceptor {
-    override fun interceptTestTemplateMethod(
+    override fun interceptTestMethod(
         invocation: InvocationInterceptor.Invocation<Void>,
         invocationContext: ReflectiveInvocationContext<Method>,
-        extensionContext: ExtensionContext
+        extensionContext: ExtensionContext,
     ) {
-        val testTags = invocationContext.targetClass.classTags().toSet() +
-                invocationContext.executable.annotations.filterTestTags()
+        val testTags = findTestAnnotations(extensionContext.element)
+
         if (testTags.isEmpty()) {
             invocation.skip()
-            throw IllegalStateException(
-                """
-                Test method either does not have test tag annotation (for example @JvmGradlePluginTests)
-                or test tag is not known to this validator.
-                """.trimIndent()
-            )
+            throw IllegalStateException("Test method either does not have test tag annotation (for example @JvmGradlePluginTests) or test tag is not known to this validator.")
         } else if (testTags.size > 1) {
             invocation.skip()
             throw IllegalStateException(
@@ -47,18 +49,15 @@ class TagsCountValidatorInterceptor : InvocationInterceptor {
         }
     }
 
-    private fun Class<*>.classTags(): List<Annotation> {
-        return annotations.filterTestTags() + (superclass?.classTags() ?: emptyList())
-    }
-
-    private fun Array<Annotation>.filterTestTags() = filter {
-        it is JvmGradlePluginTests ||
-                it is DaemonsGradlePluginTests ||
-                it is JsGradlePluginTests ||
-                it is NativeGradlePluginTests ||
-                it is MppGradlePluginTests ||
-                it is AndroidGradlePluginTests ||
-                it is OtherGradlePluginTests ||
-                it is SwiftExportGradlePluginTests
+    private fun findTestAnnotations(element: Optional<AnnotatedElement>): List<Annotation> {
+        return listOfNotNull(
+            findAnnotation(element, JvmGradlePluginTests::class.java).getOrNull(),
+            findAnnotation(element, JsGradlePluginTests::class.java).getOrNull(),
+            findAnnotation(element, NativeGradlePluginTests::class.java).getOrNull(),
+            findAnnotation(element, MppGradlePluginTests::class.java).getOrNull(),
+            findAnnotation(element, AndroidGradlePluginTests::class.java).getOrNull(),
+            findAnnotation(element, OtherGradlePluginTests::class.java).getOrNull(),
+            findAnnotation(element, SwiftExportGradlePluginTests::class.java).getOrNull(),
+        )
     }
 }

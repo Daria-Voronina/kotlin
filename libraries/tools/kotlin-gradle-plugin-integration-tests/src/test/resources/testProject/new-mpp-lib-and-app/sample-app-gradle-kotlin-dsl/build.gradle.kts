@@ -1,15 +1,15 @@
 plugins {
-	id("org.jetbrains.kotlin.multiplatform").version("<pluginMarkerVersion>")
+	id("org.jetbrains.kotlin.multiplatform")
 	id("maven-publish")
 }
 
 group = "com.example"
 version = "1.0"
 
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
+//repositories {
+//    mavenLocal()
+//    mavenCentral()
+//}
 
 kotlin {
 	val jvm6 = jvm("jvm6") {
@@ -24,8 +24,7 @@ kotlin {
     }
 	val linux64 = linuxX64("linux64")
 
-    wasmJs {
-    }
+    wasmJs { }
 
     configure(listOf(linux64)) {
         binaries.executable("main", listOf(DEBUG)) {
@@ -68,7 +67,7 @@ kotlin {
 }
 
 tasks.create("resolveRuntimeDependencies", DefaultTask::class.java) {
-    doFirst { 
+    doFirst {
         // KT-26301
         val configName = kotlin.jvm("jvm6").compilations["main"].runtimeDependencyConfigurationName
         configurations[configName].resolve()

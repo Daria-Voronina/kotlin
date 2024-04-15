@@ -26,15 +26,15 @@ import java.util.*
 import java.lang.Boolean as RefBoolean
 
 
-// Tests are not working with AGP >= 7.1.0. See KT-57351 for details
-@Ignore("TODO: update this test via KT-58298")
-class AndroidAndJavaConsumeMppLibBuiltByGradle7IT : AndroidAndJavaConsumeMppLibIT() {
-    override val producerAgpVersion: AGPVersion = AGPVersion.v7_1_0
-    override val producerGradleVersion: GradleVersionRequired = GradleVersionRequired.InRange(
-        TestVersions.Gradle.G_7_1,
-        TestVersions.Gradle.G_7_6
-    )
-}
+//// Tests are not working with AGP >= 7.1.0. See KT-57351 for details
+//@Ignore("TODO: update this test via KT-58298")
+//class AndroidAndJavaConsumeMppLibBuiltByGradle7IT : AndroidAndJavaConsumeMppLibIT() {
+//    override val producerAgpVersion: AGPVersion = AGPVersion.v7_1_0
+//    override val producerGradleVersion: GradleVersionRequired = GradleVersionRequired.InRange(
+//        TestVersions.Gradle.G_7_1,
+//        TestVersions.Gradle.G_7_6
+//    )
+//}
 
 @RunWith(Parameterized::class)
 abstract class AndroidAndJavaConsumeMppLibIT : BaseGradleIT() {

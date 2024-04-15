@@ -12,7 +12,9 @@ import org.junit.jupiter.api.extension.ExecutionCondition
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.platform.commons.logging.LoggerFactory
+import org.junit.platform.commons.support.AnnotationSupport.findAnnotation
 import java.lang.reflect.AnnotatedElement
+import kotlin.jvm.optionals.getOrNull
 
 /**
  * An annotation that enables tests to be executed on a specific operating system within a specific environment.
@@ -50,7 +52,9 @@ internal class ExecutionOnOsCondition : ExecutionCondition {
     private val disabledForCI = "Disabled for operating system: ${System.getProperty("os.name")} on CI"
 
     override fun evaluateExecutionCondition(context: ExtensionContext): ConditionEvaluationResult {
-        val annotation = findAnnotation<OsCondition>(context)
+        val annotation = findAnnotation(context.element, OsCondition::class.java)
+            .getOrNull()
+            ?: return ConditionEvaluationResult.enabled("OsCondition is not present")
 
         val supportedOn = annotation.supportedOn
         val enabledOnCI = annotation.enabledOnCI

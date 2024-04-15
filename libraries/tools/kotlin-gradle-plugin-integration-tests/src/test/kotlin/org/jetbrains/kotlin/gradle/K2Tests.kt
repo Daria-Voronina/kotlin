@@ -25,10 +25,10 @@ class K2KlibBasedMppIT : KlibBasedMppIT() {
     override val defaultBuildOptions: BuildOptions = super.defaultBuildOptions.copyEnsuringK2()
 }
 
-@Ignore
-class K2NewMultiplatformIT : NewMultiplatformIT() {
-    override fun defaultBuildOptions(): BuildOptions = super.defaultBuildOptions().copy(languageVersion = "2.0")
-}
+//@Ignore
+//class K2NewMultiplatformIT : NewMultiplatformIT() {
+//    override fun defaultBuildOptions(): BuildOptions = super.defaultBuildOptions().copy(languageVersion = "2.0")
+//}
 
 @Disabled("Used for local testing only")
 class K2CommonizerIT : CommonizerIT() {

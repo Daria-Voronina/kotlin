@@ -1,22 +1,25 @@
+//buildscript {
+//	repositories {
+//		mavenLocal()
+//		mavenCentral()
+//	}
+//	dependencies {
+//		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+//	}
+//}
+
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("maven-publish")
+}
+
 group = "com.external.dependency"
 version = "1.2.3"
 
-buildscript {
-	repositories {
-		mavenLocal()
-		mavenCentral()
-	}
-	dependencies {
-		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-	}
-}
-
-apply plugin: 'kotlin-multiplatform'
-
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
+//repositories {
+//    mavenLocal()
+//    mavenCentral()
+//}
 
 kotlin {
 	// Check the new preset functions:
@@ -24,7 +27,7 @@ kotlin {
     js('nodeJs')
     wasmJs()
     targetFromPreset(presets.jvm, 'jvm6') { println targetName } // access existing target
-    
+
     targets {
     	// Also check that the old DSL (fromPreset) works:
         fromPreset(presets.linuxX64, 'linux64')
@@ -72,8 +75,6 @@ kotlin {
 }
 
 kotlin.sourceSets.each { println it.kotlin.srcDirs }
-
-apply plugin: 'maven-publish'
 
 // Check that a compilation may be created after project evaluation, KT-28896:
 afterEvaluate {
