@@ -290,7 +290,7 @@ class IrBuiltInsOverDescriptors(
     override val anyClass = builtIns.any.toIrSymbol()
     override val anyNType = anyType.makeNullable()
 
-    override val intrinsicConstAnnotationCall = createIntrinsicConstEvaluationClass().let {
+    private val intrinsicConstAnnotationCall = createIntrinsicConstEvaluationClass().let {
         IrConstructorCallImpl.fromSymbolDescriptor(
             UNDEFINED_OFFSET, UNDEFINED_OFFSET, it.defaultType, (it.primaryConstructor as IrConstructor).symbol
         )

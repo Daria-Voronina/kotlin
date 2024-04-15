@@ -208,7 +208,7 @@ class IrBuiltInsOverFir(
 
     internal val intrinsicConstSymbol: IrClassSymbol
         get() = intrinsicConst.classSymbol
-    override val intrinsicConstAnnotationCall: IrConstructorCall
+    private val intrinsicConstAnnotationCall: IrConstructorCall
         get() = intrinsicConst.annotationCall
 
     override val iteratorClass: IrClassSymbol by lazy { loadClass(StandardClassIds.Iterator) }
