@@ -16,7 +16,9 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstance
 
-class Fir2IrJvmBuiltIns(private val c: Fir2IrComponents, irFactory: IrFactory) : Fir2IrComponents by c, Fir2IrBuiltIns {
+class Fir2IrJvmSpecialAnnotationsProvider(
+    private val c: Fir2IrComponents, irFactory: IrFactory
+) : Fir2IrComponents by c, IrSpecialAnnotationsProvider {
     private val provider = JvmIrSpecialAnnotationSymbolProvider(irFactory)
 
     override val enhancedNullabilityAnnotationCall by lazy {

@@ -7,7 +7,7 @@ package org.jetbrains.kotlin.fir.backend
 
 import org.jetbrains.kotlin.ir.expressions.IrConstructorCall
 
-interface Fir2IrBuiltIns {
+interface IrSpecialAnnotationsProvider {
     val enhancedNullabilityAnnotationCall: IrConstructorCall
 
     val flexibleNullabilityAnnotationCall: IrConstructorCall

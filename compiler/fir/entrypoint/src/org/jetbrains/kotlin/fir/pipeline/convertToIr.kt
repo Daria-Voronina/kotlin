@@ -19,7 +19,7 @@ import org.jetbrains.kotlin.fir.FirModuleData
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.backend.*
-import org.jetbrains.kotlin.fir.backend.jvm.Fir2IrJvmBuiltIns
+import org.jetbrains.kotlin.fir.backend.jvm.Fir2IrJvmSpecialAnnotationsProvider
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.lazy.Fir2IrLazyClass
 import org.jetbrains.kotlin.fir.moduleData
@@ -92,7 +92,7 @@ fun FirResult.convertToIrAndActualize(
 
     fun ModuleCompilerAnalyzedOutput.createFir2IrComponentsStorage(
         irBuiltIns: IrBuiltInsOverFir? = null,
-        fir2IrBuiltIns: Fir2IrBuiltIns? = null,
+        irSpecialAnnotationsProvider: IrSpecialAnnotationsProvider? = null,
         irTypeSystemContext: IrTypeSystemContext? = null,
     ): Fir2IrComponentsStorage {
         return Fir2IrComponentsStorage(
@@ -108,9 +108,9 @@ fun FirResult.convertToIrAndActualize(
             irMangler,
             kotlinBuiltIns,
             irBuiltIns,
-            fir2IrBuiltIns,
+            irSpecialAnnotationsProvider,
             initializeFirBuiltIns = {
-                runIf(platformFirOutput.session.moduleData.platform.isJvm()) { Fir2IrJvmBuiltIns(it, IrFactoryImpl) }
+                runIf(platformFirOutput.session.moduleData.platform.isJvm()) { Fir2IrJvmSpecialAnnotationsProvider(it, IrFactoryImpl) }
             },
             irTypeSystemContext,
             firProvidersWithGeneratedFiles.getValue(session.moduleData),
@@ -130,7 +130,9 @@ fun FirResult.convertToIrAndActualize(
             platformComponentsStorage
         } else {
             firOutput.createFir2IrComponentsStorage(
-                platformComponentsStorage.irBuiltIns, platformComponentsStorage.builtIns, platformComponentsStorage.irTypeSystemContext
+                platformComponentsStorage.irBuiltIns,
+                platformComponentsStorage.irSpecialAnnotationsProvider,
+                platformComponentsStorage.irTypeSystemContext
             )
         }
 
