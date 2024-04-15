@@ -1,4 +1,4 @@
-exception: org.jetbrains.kotlin.util.FileAnalysisException: While analysing $TESTDATA_DIR$/main/Main.kt:2:46: java.lang.IllegalArgumentException: source must not be null
+exception: org.jetbrains.kotlin.util.FileAnalysisException: While analysing $TESTDATA_DIR$/main/Main.kt:7:46: java.lang.IllegalArgumentException: source must not be null
 	at org.jetbrains.kotlin.util.AnalysisExceptionsKt.wrapIntoFileAnalysisExceptionIfNeeded(AnalysisExceptions.kt:56)
 	at org.jetbrains.kotlin.fir.FirCliExceptionHandler.handleExceptionOnFileAnalysis(Utils.kt:180)
 	at org.jetbrains.kotlin.fir.pipeline.AnalyseKt.runCheckers(analyse.kt:46)
@@ -80,7 +80,7 @@ Caused by: java.lang.IllegalArgumentException: source must not be null
 	at org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollectorVisitor.visitResolvedTypeRef(AbstractDiagnosticCollectorVisitor.kt:244)
 	at org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollectorVisitor.visitResolvedTypeRef(AbstractDiagnosticCollectorVisitor.kt:29)
 	at org.jetbrains.kotlin.fir.types.FirResolvedTypeRef.accept(FirResolvedTypeRef.kt:28)
-	at org.jetbrains.kotlin.fir.expressions.impl.FirSmartCastExpressionImpl.acceptChildren(FirSmartCastExpressionImpl.kt:47)
+	at org.jetbrains.kotlin.fir.expressions.impl.FirSmartCastExpressionImpl.acceptChildren(FirSmartCastExpressionImpl.kt:48)
 	at org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollectorVisitor.visitNestedElements(AbstractDiagnosticCollectorVisitor.kt:37)
 	at org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollectorVisitor.visitAnnotationContainer(AbstractDiagnosticCollectorVisitor.kt:60)
 	at org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollectorVisitor.visitAnnotationContainer(AbstractDiagnosticCollectorVisitor.kt:29)
