@@ -53,7 +53,8 @@ class IrBuiltInsOverFir(
     private val c: Fir2IrComponents,
     override val languageVersionSettings: LanguageVersionSettings,
     private val moduleDescriptor: FirModuleDescriptor,
-    irMangler: KotlinMangler.IrMangler
+    irMangler: KotlinMangler.IrMangler,
+    internal val irSpecialAnnotationsProvider: IrSpecialAnnotationsProvider?,
 ) : IrBuiltIns() {
     private val session: FirSession
         get() = c.session

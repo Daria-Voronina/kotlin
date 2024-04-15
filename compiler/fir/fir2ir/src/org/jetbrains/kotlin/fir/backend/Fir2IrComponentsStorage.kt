@@ -37,8 +37,7 @@ class Fir2IrComponentsStorage(
     irMangler: KotlinMangler.IrMangler,
     kotlinBuiltIns: KotlinBuiltIns,
     initializedIrBuiltIns: IrBuiltInsOverFir?,
-    initializedFirBuiltIns: IrSpecialAnnotationsProvider?,
-    initializeFirBuiltIns: (Fir2IrComponents) -> IrSpecialAnnotationsProvider?,
+    initializeSpecialAnnotationsProvider: (Fir2IrComponents) -> IrSpecialAnnotationsProvider?,
     initializedIrTypeSystemContext: IrTypeSystemContext?,
     override val firProvider: FirProviderWithGeneratedFiles,
 ) : Fir2IrComponents {
@@ -62,9 +61,8 @@ class Fir2IrComponentsStorage(
 
     // builtins should go after storages and generators, because they use them during initialization
     override val irBuiltIns: IrBuiltInsOverFir = initializedIrBuiltIns ?: IrBuiltInsOverFir(
-        this, configuration.languageVersionSettings, moduleDescriptor, irMangler
+        this, configuration.languageVersionSettings, moduleDescriptor, irMangler, initializeSpecialAnnotationsProvider(this)
     )
-    override val irSpecialAnnotationsProvider: IrSpecialAnnotationsProvider? = initializedFirBuiltIns ?: initializeFirBuiltIns(this)
     val irTypeSystemContext: IrTypeSystemContext = initializedIrTypeSystemContext ?: actualizerTypeContextProvider(irBuiltIns)
 
     override val fakeOverrideBuilder: IrFakeOverrideBuilder = IrFakeOverrideBuilder(

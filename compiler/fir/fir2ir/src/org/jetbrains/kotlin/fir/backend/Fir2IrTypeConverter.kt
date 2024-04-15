@@ -114,21 +114,21 @@ class Fir2IrTypeConverter(
                         ?: (lookupTag as? ConeClassLikeLookupTag)?.let(classifiersGenerator::createIrClassForNotFoundClass)?.symbol
                         ?: return createErrorType()
 
-                if (irSpecialAnnotationsProvider != null) {
+                irBuiltIns.irSpecialAnnotationsProvider?.let {
                     if (hasEnhancedNullability) {
-                        typeAnnotations += irSpecialAnnotationsProvider.enhancedNullabilityAnnotationCall
+                        typeAnnotations += it.enhancedNullabilityAnnotationCall
                     }
                     if (hasFlexibleNullability) {
-                        typeAnnotations += irSpecialAnnotationsProvider.flexibleNullabilityAnnotationCall
+                        typeAnnotations += it.flexibleNullabilityAnnotationCall
                     }
                     if (hasFlexibleMutability) {
-                        typeAnnotations += irSpecialAnnotationsProvider.flexibleMutabilityAnnotationCall
+                        typeAnnotations += it.flexibleMutabilityAnnotationCall
                     }
                     if (hasFlexibleArrayElementVariance) {
-                        typeAnnotations += irSpecialAnnotationsProvider.flexibleArrayElementVarianceAnnotationCall
+                        typeAnnotations += it.flexibleArrayElementVarianceAnnotationCall
                     }
                     if (addRawTypeAnnotation) {
-                        typeAnnotations += irSpecialAnnotationsProvider.rawTypeAnnotationCall
+                        typeAnnotations += it.rawTypeAnnotationCall
                     }
                 }
 

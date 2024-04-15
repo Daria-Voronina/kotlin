@@ -92,7 +92,6 @@ fun FirResult.convertToIrAndActualize(
 
     fun ModuleCompilerAnalyzedOutput.createFir2IrComponentsStorage(
         irBuiltIns: IrBuiltInsOverFir? = null,
-        irSpecialAnnotationsProvider: IrSpecialAnnotationsProvider? = null,
         irTypeSystemContext: IrTypeSystemContext? = null,
     ): Fir2IrComponentsStorage {
         return Fir2IrComponentsStorage(
@@ -108,8 +107,7 @@ fun FirResult.convertToIrAndActualize(
             irMangler,
             kotlinBuiltIns,
             irBuiltIns,
-            irSpecialAnnotationsProvider,
-            initializeFirBuiltIns = {
+            initializeSpecialAnnotationsProvider = {
                 runIf(platformFirOutput.session.moduleData.platform.isJvm()) { Fir2IrJvmSpecialAnnotationsProvider(it, IrFactoryImpl) }
             },
             irTypeSystemContext,
@@ -129,11 +127,7 @@ fun FirResult.convertToIrAndActualize(
         val componentsStorage = if (isMainOutput) {
             platformComponentsStorage
         } else {
-            firOutput.createFir2IrComponentsStorage(
-                platformComponentsStorage.irBuiltIns,
-                platformComponentsStorage.irSpecialAnnotationsProvider,
-                platformComponentsStorage.irTypeSystemContext
-            )
+            firOutput.createFir2IrComponentsStorage(platformComponentsStorage.irBuiltIns, platformComponentsStorage.irTypeSystemContext)
         }
 
         val irModuleFragment = Fir2IrConverter.generateIrModuleFragment(componentsStorage, firOutput.fir).also {
