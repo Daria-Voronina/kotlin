@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.backend
 
+import org.jetbrains.kotlin.backend.common.IrSpecialAnnotationsProvider
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.generators.*
 import org.jetbrains.kotlin.fir.declarations.FirFile
@@ -32,6 +33,7 @@ interface Fir2IrComponents {
 
     val symbolTable: SymbolTable
     val irBuiltIns: IrBuiltInsOverFir
+    val irSpecialAnnotationsProvider: IrSpecialAnnotationsProvider?
     val manglers: Manglers
 
     val irFactory: IrFactory

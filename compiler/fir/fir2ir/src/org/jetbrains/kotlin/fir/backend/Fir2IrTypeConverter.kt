@@ -114,7 +114,7 @@ class Fir2IrTypeConverter(
                         ?: (lookupTag as? ConeClassLikeLookupTag)?.let(classifiersGenerator::createIrClassForNotFoundClass)?.symbol
                         ?: return createErrorType()
 
-                irBuiltIns.irSpecialAnnotationsProvider?.let {
+                irSpecialAnnotationsProvider?.let {
                     if (hasEnhancedNullability) {
                         typeAnnotations += it.enhancedNullabilityAnnotationCall
                     }
