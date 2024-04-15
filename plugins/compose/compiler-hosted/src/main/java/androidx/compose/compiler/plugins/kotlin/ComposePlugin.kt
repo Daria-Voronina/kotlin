@@ -72,6 +72,9 @@ object ComposeConfiguration {
         CompilerConfigurationKey<Boolean>(
             "Enabled optimization to remove groups around non-skipping functions"
         )
+    val SUPPRESS_KOTLIN_VERSION_COMPATIBILITY_CHECK = CompilerConfigurationKey<String?>(
+        "Deprecated. Version of Kotlin for which version compatibility check should be suppressed"
+    )
     val DECOYS_ENABLED_KEY =
         CompilerConfigurationKey<Boolean>("Generate decoy methods in IR transform")
     val STRONG_SKIPPING_ENABLED_KEY =
@@ -155,7 +158,7 @@ class ComposeCommandLineProcessor : CommandLineProcessor {
         val SUPPRESS_KOTLIN_VERSION_CHECK_ENABLED_OPTION = CliOption(
             "suppressKotlinVersionCompatibilityCheck",
             "<kotlin_version>",
-            "Suppress Kotlin version compatibility check",
+            "Deprecated. Suppress Kotlin version compatibility check",
             required = false,
             allowMultipleOccurrences = false
         )
@@ -199,6 +202,7 @@ class ComposeCommandLineProcessor : CommandLineProcessor {
         REPORTS_DESTINATION_OPTION,
         INTRINSIC_REMEMBER_OPTIMIZATION_ENABLED_OPTION,
         NON_SKIPPING_GROUP_OPTIMIZATION_ENABLED_OPTION,
+        SUPPRESS_KOTLIN_VERSION_CHECK_ENABLED_OPTION,
         DECOYS_ENABLED_OPTION,
         STRONG_SKIPPING_OPTION,
         STABLE_CONFIG_PATH_OPTION,
@@ -241,6 +245,10 @@ class ComposeCommandLineProcessor : CommandLineProcessor {
         NON_SKIPPING_GROUP_OPTIMIZATION_ENABLED_OPTION -> configuration.put(
             ComposeConfiguration.NON_SKIPPING_GROUP_OPTIMIZATION_ENABLED_KEY,
             value == "true"
+        )
+        SUPPRESS_KOTLIN_VERSION_CHECK_ENABLED_OPTION -> configuration.put(
+            ComposeConfiguration.SUPPRESS_KOTLIN_VERSION_COMPATIBILITY_CHECK,
+            value
         )
         DECOYS_ENABLED_OPTION -> configuration.put(
             ComposeConfiguration.DECOYS_ENABLED_KEY,
@@ -291,6 +299,18 @@ class ComposePluginRegistrar : org.jetbrains.kotlin.compiler.plugin.ComponentReg
     }
 
     companion object {
+        fun checkCompilerVersion(configuration: CompilerConfiguration): Boolean {
+            val msgCollector = configuration.get(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY)
+            val suppressKotlinVersionCheck = configuration.get(ComposeConfiguration.SUPPRESS_KOTLIN_VERSION_COMPATIBILITY_CHECK)
+            if (suppressKotlinVersionCheck != null) {
+                msgCollector?.report(
+                    CompilerMessageSeverity.WARNING,
+                    "suppressKotlinVersionCompatibilityCheck flag is deprecated for Compose compiler bundled with Kotlin releases."
+                )
+            }
+            return true
+        }
+
         fun registerCommonExtensions(project: Project) {
             StorageComponentContainerContributor.registerExtension(
                 project,
