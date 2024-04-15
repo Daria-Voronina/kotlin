@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.name.Name
 
 object FirMissingDependencyClassForParameterChecker : FirValueParameterChecker(MppCheckerKind.Common), FirMissingDependencyClassProxy {
     override fun check(
@@ -29,7 +30,9 @@ object FirMissingDependencyClassForParameterChecker : FirValueParameterChecker(M
         considerType(declaration.returnTypeRef.coneType, missingTypes, context)
         reportMissingTypes(
             declaration.source, missingTypes, context, reporter,
-            missingTypeOrigin = FirMissingDependencyClassProxy.MissingTypeOrigin.LAMBDA_PARAMETER
+            missingTypeOrigin = FirMissingDependencyClassProxy.MissingTypeOrigin.LambdaParameter(
+                declaration.name.takeIf { !it.isSpecial } ?: Name.identifier("_")
+            )
         )
     }
 }
